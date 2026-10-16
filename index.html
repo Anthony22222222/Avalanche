@@ -1,0 +1,1349 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0e7655">
+<title>Avalanche — Debt Payoff Planner</title>
+<style>
+:root{
+  --bg:#f3f4f0;--surface:#ffffff;--surface-2:#f1f2ee;--ink:#15201b;--ink-2:#4a5650;--ink-3:#85908a;--line:#e2e6df;
+  --accent:#0e7655;--accent-ink:#ffffff;--accent-soft:#e1f1ea;
+  --warn:#a35f00;--warn-soft:#fdf1da;--danger:#c23b2e;--danger-soft:#fce9e6;--info:#2b5ea6;--info-soft:#e7eef9;
+  --c-flex:#2f7fd1;--c-big:#8657cc;--c-debt:#d6891a;--c-ef:#d0463a;
+  --radius:18px;--shadow:0 1px 2px rgba(21,32,27,.04),0 6px 20px rgba(21,32,27,.05);
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#0e1311;--surface:#161c19;--surface-2:#1e2522;--ink:#e8eeea;--ink-2:#a9b4ae;--ink-3:#77827c;--line:#29312d;
+  --accent:#41c08f;--accent-ink:#04140d;--accent-soft:#15322a;
+  --warn:#f0b04a;--warn-soft:#352810;--danger:#f07264;--danger-soft:#3a1916;--info:#86aaea;--info-soft:#18243a;
+  --shadow:none;color-scheme:dark;
+}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,"Helvetica Neue",Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--accent);cursor:pointer;text-decoration:none;font-weight:600}
+.num,.big,.xl,.lg,.tile .v{font-variant-numeric:tabular-nums}
+.wrap{max-width:1040px;margin:0 auto;padding:0 16px}
+header.top{position:sticky;top:0;z-index:20;background:var(--bg);background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:saturate(1.4) blur(12px);-webkit-backdrop-filter:saturate(1.4) blur(12px);border-bottom:1px solid var(--line)}
+.topin{display:flex;align-items:center;gap:14px;height:62px}
+.brand{display:flex;align-items:center;gap:10px;font-weight:750;letter-spacing:-.015em;font-size:17px}
+.mark{width:30px;height:30px;border-radius:9px;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center}
+.tabs{display:flex;gap:2px;margin-left:auto}
+.tab{border:0;background:transparent;color:var(--ink-2);padding:8px 12px;border-radius:10px;font-weight:600;cursor:pointer;font-size:14px}
+.tab:hover{color:var(--ink)}
+.tab.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow);outline:1px solid var(--line)}
+nav.bottom{display:none}
+main.wrap{padding:22px 16px 120px}
+.ph{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 0 16px;flex-wrap:wrap}
+.ph h1{font-size:26px;letter-spacing:-.02em;margin:0}
+.ph .sub{color:var(--ink-3);font-size:14px;margin-top:2px}
+.grid{display:grid;gap:16px}
+.g2{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}
+.g2e{grid-template-columns:1fr 1fr}
+.mt{margin-top:10px}.mt8{margin-top:8px}.mt16{margin-top:16px}.center{text-align:center}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow);min-width:0}
+.card h3{margin:0 0 14px;font-size:16px;letter-spacing:-.01em}
+.eyebrow{font-size:11.5px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.label{font-size:13px;color:var(--ink-2);font-weight:600}
+.big{font-size:42px;font-weight:760;letter-spacing:-.03em;line-height:1.08;margin:6px 0 4px}
+.xl{font-size:30px;font-weight:740;letter-spacing:-.025em;line-height:1.15;margin-top:2px}
+.lg{font-size:21px;font-weight:720;letter-spacing:-.02em;line-height:1.2}
+.lg small{font-size:14px;font-weight:600;color:var(--ink-3)}
+.sub{color:var(--ink-2);font-size:14px}
+.hint{color:var(--ink-3);font-size:13px;line-height:1.4}
+.muted{color:var(--ink-3)}
+.goal{display:inline-block;margin-top:12px;padding:7px 12px;border-radius:10px;font-size:14px}
+.goal.late{background:var(--warn-soft);color:var(--ink)} .goal.late b{color:var(--warn)}
+.goal.ok{background:var(--accent-soft);color:var(--ink)} .goal.ok b{color:var(--accent)}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px;padding-top:18px;border-top:1px solid var(--line)}
+.bar{height:7px;background:var(--surface-2);border-radius:99px;overflow:hidden;margin:10px 0 6px}
+.bar>i{display:block;height:100%;background:var(--accent);border-radius:99px}
+.kvs{margin-top:10px}
+.kv{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:6px 0;color:var(--ink-2);font-size:14px}
+.kv b{color:var(--ink);font-weight:650;text-align:right}
+.kv.neg b{color:var(--danger)}
+.kv.tot{border-top:1px solid var(--line);margin-top:4px;padding-top:10px}
+.down{color:var(--warn)}
+.goesto{margin-top:10px;padding:10px 12px;background:var(--surface-2);border-radius:12px;font-size:14px;color:var(--ink-2)}
+.goesto b{color:var(--ink)}
+.done{display:flex;gap:12px;align-items:center;margin:14px 0 8px}
+.ck{width:40px;height:40px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:none}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-weight:620;padding:9px 16px;border-radius:12px;cursor:pointer;min-height:42px;font-size:15px;transition:transform .06s,filter .15s,background .15s}
+.btn:hover{filter:brightness(.97)} .btn:active{transform:scale(.98)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.ghost{background:transparent;border-color:transparent;color:var(--ink-2)}
+.btn.ghost:hover{background:var(--surface-2)}
+.btn.danger{color:var(--danger)}
+.btn.dangerfill{background:var(--danger);border-color:var(--danger);color:#fff}
+.btn.sm{min-height:34px;padding:6px 12px;font-size:14px;border-radius:10px}
+.btn.lg{min-height:52px;padding:12px 22px;font-size:16px}
+.btn:disabled{opacity:.55;cursor:default;transform:none;filter:none}
+.btn.pay{width:100%;min-height:62px;margin-top:16px;font-size:17px;letter-spacing:.09em;text-transform:uppercase;font-weight:780;border:0;border-radius:15px;background:var(--accent);color:var(--accent-ink);box-shadow:0 8px 22px color-mix(in srgb,var(--accent) 30%,transparent)}
+.btn.pay:disabled{background:var(--surface-2);color:var(--ink-3);box-shadow:none;opacity:1}
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;padding:3px 9px;border-radius:99px;background:var(--surface-2);color:var(--ink-2);vertical-align:middle;white-space:nowrap}
+.pill.ok{background:var(--accent-soft);color:var(--accent)}
+.pill.bad{background:var(--danger-soft);color:var(--danger)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.info{background:var(--info-soft);color:var(--info)}
+.banner{display:flex;gap:12px;align-items:flex-start;padding:12px 14px;border-radius:14px;font-size:14px;margin-bottom:12px;border:1px solid transparent}
+.banner svg{flex:none;margin-top:1px}
+.banner.bad{background:var(--danger-soft)} .banner.bad svg{color:var(--danger)}
+.banner.warn{background:var(--warn-soft)} .banner.warn svg{color:var(--warn)}
+.banner.info{background:var(--info-soft)} .banner.info svg{color:var(--info)}
+.banner .grow{flex:1}
+.tiles{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.tile{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:14px 16px;cursor:pointer;text-align:left;box-shadow:var(--shadow)}
+.tile .v{font-size:21px;font-weight:720;letter-spacing:-.02em;margin:4px 0 2px}
+.tile.bad{border-color:color-mix(in srgb,var(--danger) 45%,var(--line))} .tile.bad .v{color:var(--danger)}
+.tgname{font-size:18px;font-weight:700;margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.xrow{display:flex;justify-content:space-between;gap:12px;width:100%;padding:11px 0;border:0;border-top:1px solid var(--line);background:none;text-align:left;cursor:pointer}
+.xrow:first-of-type{border-top:0}
+.xrow span{display:block;font-size:13px;color:var(--ink-3);margin-top:2px}
+.xrow .r{text-align:right;flex:none}
+.late{color:var(--warn)!important}
+.empty{padding:18px;text-align:center;color:var(--ink-3);font-size:14px;background:var(--surface-2);border-radius:12px}
+.chip{display:inline-flex;align-items:center;gap:6px;font-size:13px;padding:4px 10px;border-radius:99px;background:var(--surface-2);color:var(--ink-2);margin:0 6px 6px 0}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.dot.flex{background:var(--c-flex)}.dot.big{background:var(--c-big)}.dot.debt{background:var(--c-debt)}.dot.ef{background:var(--c-ef)}
+.xitem{padding:16px 0;border-top:1px solid var(--line)}
+.xitem:first-child{border-top:0;padding-top:4px}
+.xitem.cancelled{opacity:.6}
+.xmain{display:flex;justify-content:space-between;gap:12px}
+.xmain .r{text-align:right;flex:none}
+.allocs{margin-top:10px}
+.imp{font-size:14px;font-weight:620;margin-top:2px}
+.xact{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.seg{display:flex;gap:4px;background:var(--surface-2);padding:4px;border-radius:12px}
+.seg button{border:0;background:transparent;padding:7px 12px;border-radius:9px;cursor:pointer;font-weight:600;font-size:14px;color:var(--ink-2)}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:var(--shadow)}
+.debt.target{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.debt.paid{opacity:.72}
+.dtop{display:flex;justify-content:space-between;gap:12px}
+.dtop .r{text-align:right}
+.dname{font-size:17px;font-weight:700;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.dgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.dgrid span{display:block;font-size:12px;color:var(--ink-3);font-weight:600}
+.dgrid b{display:block;font-weight:650;margin-top:2px}
+.dgrid small{display:block;color:var(--ink-3);font-size:12px}
+.dact{display:flex;gap:6px;margin-top:14px;flex-wrap:wrap}
+.warnTxt{color:var(--warn);font-style:normal}
+.f{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--ink-2);font-weight:600;min-width:0}
+.f input,.f select,.f textarea{font-size:16px;font-weight:450;color:var(--ink);background:var(--surface-2);border:1px solid var(--line);border-radius:11px;padding:10px 12px;outline:none;width:100%;min-height:44px}
+.f textarea{resize:vertical;min-height:60px}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.f small{font-weight:450;color:var(--ink-3)}
+.f.err input{border-color:var(--danger);box-shadow:0 0 0 3px var(--danger-soft)}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.span2{grid-column:1 / -1}
+.chk{display:flex;gap:10px;align-items:center;font-size:14px;color:var(--ink-2);font-weight:550;cursor:pointer}
+.chk input{width:18px;height:18px;accent-color:var(--accent)}
+.actions{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+.calc{display:flex;justify-content:space-between;align-items:baseline;margin-top:16px;padding:14px 16px;background:var(--accent-soft);border-radius:14px}
+.calc span{font-weight:650}
+.calc b{font-size:24px;font-weight:760;color:var(--accent);font-variant-numeric:tabular-nums}
+.types{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.type{position:relative;display:block;padding:11px 12px;border:1px solid var(--line);border-radius:12px;cursor:pointer;background:var(--surface)}
+.type input{position:absolute;opacity:0;pointer-events:none}
+.type b{display:block;color:var(--ink);font-size:14px}
+.type small{display:block;color:var(--ink-3);font-weight:450;font-size:12.5px;line-height:1.35;margin-top:2px}
+.type:has(input:checked){border-color:var(--accent);background:var(--accent-soft);box-shadow:0 0 0 1px var(--accent)}
+.preview{margin-top:18px;padding:16px;border-radius:16px;background:var(--surface-2)}
+.preview .eyebrow{margin-bottom:8px}
+.arow{display:flex;align-items:center;gap:10px;padding:5px 0;font-size:15px}
+.arow span{flex:1}
+.arow b{font-variant-numeric:tabular-nums}
+.okline{color:var(--accent);font-weight:600;font-size:14px;padding:4px 0}
+.note{font-size:13px;color:var(--ink-2);margin-top:6px;padding-left:18px;position:relative}
+.note:before{content:"";position:absolute;left:4px;top:7px;width:5px;height:5px;border-radius:50%;background:var(--ink-3)}
+.ba{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--line)}
+.ba .arrow{color:var(--ink-3)}
+.ba .lbl{font-size:12px;color:var(--ink-3);font-weight:600}
+.ba b{display:block;font-size:16px}
+.impbig{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;padding:12px 14px;border-radius:12px;background:var(--surface)}
+.impbig b{font-size:24px;font-weight:780}
+.payline{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-top:1px solid var(--line)}
+.payline .r{text-align:right;flex:none}
+.payline .s{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+.payhead{display:flex;justify-content:space-between;align-items:baseline;padding:14px 16px;background:var(--accent-soft);border-radius:14px;margin-bottom:8px}
+.payhead b{font-size:28px;font-weight:780;color:var(--accent);font-variant-numeric:tabular-nums}
+.cele{padding:10px 12px;border-radius:12px;background:var(--accent-soft);font-size:14px;margin:8px 0}
+details.pay{border-top:1px solid var(--line)}
+details.pay summary{list-style:none;display:flex;justify-content:space-between;gap:12px;padding:12px 0;cursor:pointer}
+details.pay summary::-webkit-details-marker{display:none}
+details.pay .in{padding:0 0 12px}
+.loge{display:flex;gap:12px;padding:8px 0;border-top:1px solid var(--line);font-size:14px}
+.loge time{flex:none;width:92px;color:var(--ink-3);font-size:13px}
+.grow{display:grid;grid-template-columns:1fr 110px auto;gap:8px;margin-bottom:8px}
+.grow input{font-size:16px;background:var(--surface-2);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0;color:var(--ink)}
+.drow{padding:16px;border:1px solid var(--line);border-radius:16px;margin-bottom:12px;background:var(--surface)}
+.drow.off{opacity:.6}
+.drow .dgr{display:grid;grid-template-columns:2fr 1fr 1fr 1fr;gap:10px}
+.drow .dgr2{display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:10px;margin-top:10px;align-items:end}
+.setup{max-width:860px;margin:0 auto;padding:28px 16px 80px}
+.setup h1{font-size:32px;letter-spacing:-.03em;margin:22px 0 6px}
+.setup .lead{color:var(--ink-2);margin:0 0 22px;max-width:640px}
+.setup .card{margin-bottom:16px}
+.fab{display:none}
+.scrim{position:fixed;inset:0;background:rgba(8,14,11,.48);display:flex;align-items:center;justify-content:center;padding:20px;z-index:60;animation:fade .15s ease}
+.sheet{background:var(--surface);border-radius:22px;width:100%;max-width:580px;max-height:calc(100vh - 40px);overflow:auto;box-shadow:0 24px 70px rgba(0,0,0,.28);animation:rise .18s ease}
+.sheet.wide{max-width:680px}
+.sheet .hd{padding:18px 20px 10px;display:flex;justify-content:space-between;align-items:center;gap:10px;position:sticky;top:0;background:var(--surface);z-index:2}
+.sheet .hd h2{margin:0;font-size:19px;letter-spacing:-.015em}
+.sheet .bd{padding:6px 20px 18px}
+.sheet .ft{padding:12px 20px calc(14px + env(safe-area-inset-bottom));display:flex;gap:8px;justify-content:flex-end;position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--line);z-index:2}
+.sheet .ft .lft{margin-right:auto}
+.x{border:0;background:var(--surface-2);width:34px;height:34px;border-radius:50%;cursor:pointer;display:grid;place-items:center;color:var(--ink-2)}
+#toast{position:fixed;left:50%;top:76px;transform:translateX(-50%) translateY(-12px);background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:12px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:all .2s;z-index:80;max-width:calc(100% - 32px)}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+@keyframes fade{from{opacity:0}}
+@keyframes rise{from{transform:translateY(12px);opacity:.6}}
+@media (max-width:820px){
+  .tabs,.hide-m{display:none}
+  .g2,.g2e{grid-template-columns:1fr}
+  .tiles{grid-template-columns:1fr 1fr}
+  .dgrid{grid-template-columns:1fr 1fr}
+  nav.bottom{display:flex;position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--surface);border-top:1px solid var(--line);padding:6px 4px calc(6px + env(safe-area-inset-bottom))}
+  nav.bottom button{flex:1;border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:2px;font-size:11px;font-weight:600;color:var(--ink-3);padding:6px 0;cursor:pointer}
+  nav.bottom button.on{color:var(--accent)}
+  .fab{display:flex;position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom));z-index:31;align-items:center;gap:6px;border:0;border-radius:99px;padding:13px 18px 13px 14px;background:var(--ink);color:var(--bg);font-weight:700;font-size:15px;box-shadow:0 10px 26px rgba(0,0,0,.25);cursor:pointer}
+  .scrim{align-items:flex-end;padding:0}
+  .sheet{border-radius:22px 22px 0 0;max-height:94vh;max-width:none}
+  .big{font-size:36px}
+  .drow .dgr{grid-template-columns:1fr 1fr}
+  .drow .dgr .nm{grid-column:1 / -1}
+  .drow .dgr2{grid-template-columns:1fr 1fr}
+}
+@media (max-width:420px){
+  .split{grid-template-columns:1fr}
+  .fgrid{grid-template-columns:1fr}
+  .types{grid-template-columns:1fr}
+  .big{font-size:33px}
+}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal-root"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="importFile" accept="application/json,.json" hidden>
+<script>
+'use strict';
+/* ============================================================
+   Avalanche — personal debt payoff + irregular-expense planner
+   Everything lives in localStorage under KEY. No network calls.
+   ============================================================ */
+const KEY = 'avalanche.v1';
+
+/* ---------- small utilities ---------- */
+const pad = n => String(n).padStart(2, '0');
+const mk = (y, m, d) => `${y}-${pad(m)}-${pad(d)}`;
+const parts = s => s.split('-').map(Number);
+const lastDayOf = (y, m) => new Date(Date.UTC(y, m, 0)).getUTCDate();
+const toT = s => { const [y, m, d] = parts(s); return Date.UTC(y, m - 1, d); };
+const fromT = t => { const x = new Date(t); return mk(x.getUTCFullYear(), x.getUTCMonth() + 1, x.getUTCDate()); };
+const diffDays = (a, b) => Math.round((toT(b) - toT(a)) / 864e5);
+const addDays = (s, n) => fromT(toT(s) + n * 864e5);
+const todayISO = () => { const n = new Date(); return mk(n.getFullYear(), n.getMonth() + 1, n.getDate()); };
+const isISO = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
+const uid = () => Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-5);
+const r2 = n => Math.round((Number(n) + Number.EPSILON) * 100) / 100;
+const num = v => { if (v == null || v === '') return 0; const n = parseFloat(String(v).replace(/[$,%\s]/g, '')); return isFinite(n) ? n : 0; };
+const numOrNull = v => { if (v == null || String(v).trim() === '') return null; const n = parseFloat(String(v).replace(/[$,%\s]/g, '')); return isFinite(n) ? n : null; };
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const USD = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' });
+const USD0 = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+const money = n => USD.format(Math.abs(n) < 0.005 ? 0 : n);
+const money0 = n => USD0.format(Math.abs(n) < 0.5 ? 0 : n);
+const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const fmtD = s => { if (!isISO(s)) return '—'; const [y, m, d] = parts(s); return `${MON[m - 1]} ${d}, ${y}`; };
+const fmtDs = s => { if (!isISO(s)) return '—'; const [, m, d] = parts(s); return `${MON[m - 1]} ${d}`; };
+const fmtMY = s => { if (!isISO(s)) return '—'; const [y, m] = parts(s); return `${MON[m - 1]} ${y}`; };
+const fmtApr = a => (a == null || a === '') ? 'APR missing' : `${Number(a).toFixed(2).replace(/\.?0+$/, '')}% APR`;
+const plural = (n, w) => `${n} ${w}${Math.abs(n) === 1 ? '' : 's'}`;
+const ago = s => { if (!isISO(s)) return 'never'; const n = diffDays(s, todayISO()); return n <= 0 ? 'today' : n === 1 ? 'yesterday' : `${n} days ago`; };
+const fmtDelta = d => d == null ? '—' : d > 0 ? `+${plural(d, 'day')}` : d < 0 ? `−${plural(-d, 'day')}` : 'no change';
+function addMonths(s, n) { const [y, m, d] = parts(s); const t = m - 1 + n; const ny = y + Math.floor(t / 12), nm = ((t % 12) + 12) % 12 + 1; return mk(ny, nm, Math.min(d, lastDayOf(ny, nm))); }
+function spanText(a, b) {
+  if (!isISO(a) || !isISO(b)) return '';
+  if (b < a) [a, b] = [b, a];
+  const [y1, m1, d1] = parts(a), [y2, m2, d2] = parts(b);
+  let mo = (y2 - y1) * 12 + (m2 - m1); if (d2 < d1) mo--; if (mo < 0) mo = 0;
+  const days = diffDays(addMonths(a, mo), b), y = Math.floor(mo / 12), m = mo % 12, out = [];
+  if (y) out.push(`${y} yr`); if (m) out.push(`${m} mo`);
+  if (!y && (days || !m)) out.push(plural(days, 'day'));
+  return out.join(' ');
+}
+
+/* ---------- pay periods: paydays are the 15th and the last day of each month ---------- */
+function periodOf(s) {
+  const [y, m, d] = parts(s), ld = lastDayOf(y, m);
+  if (d === ld) { const ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1; return { payday: s, start: s, end: mk(ny, nm, 14) }; }
+  if (d >= 15) return { payday: mk(y, m, 15), start: mk(y, m, 15), end: mk(y, m, ld - 1) };
+  const py = m === 1 ? y - 1 : y, pm = m === 1 ? 12 : m - 1, pl = lastDayOf(py, pm);
+  return { payday: mk(py, pm, pl), start: mk(py, pm, pl), end: mk(y, m, 14) };
+}
+function nextPayday(p) { const [y, m, d] = parts(p); if (d === 15) return mk(y, m, lastDayOf(y, m)); const ny = m === 12 ? y + 1 : y, nm = m === 12 ? 1 : m + 1; return mk(ny, nm, 15); }
+function countPaydays(a, b) { let n = 0, p = a; while (p <= b && n < 2000) { n++; p = nextPayday(p); } return n; }
+
+/* ---------- labels ---------- */
+const KIND = { card: 'Credit card', private: 'Private student loan', federal: 'Federal student loan', other: 'Other debt' };
+const TYPE = { flexible: 'Flexible', planned: 'Planned / QoL', essential: 'Essential', emergency: 'True emergency' };
+const AUTO_SRC = { flexible: 'flex', planned: 'big', essential: 'debt', emergency: 'ef' };
+const SRC = { flex: 'Ally Spending (flexible)', big: 'Big Purchase bucket', debt: 'Reduced debt attack', ef: 'Ally Savings (emergency fund)' };
+const SRC_SHORT = { flex: 'Flexible', big: 'Bucket', debt: 'Debt attack', ef: 'Emergency fund' };
+
+/* ---------- state ---------- */
+function newDebt(o) {
+  return Object.assign({ id: uid(), name: '', kind: 'other', anchorBal: null, anchorDate: null, apr: null, min: null,
+    minFrom: 'extra', due: '15', active: true, verifiedBal: null, verifiedDate: null, paidOffDate: null, ph: {} }, o);
+}
+function defaultState() {
+  const t = todayISO();
+  return {
+    v: 1, setupDone: false, created: t, startTotal: null, lastExport: null,
+    settings: { paycheck: 2824.74, fixed: 1000, flexible: 365, bigPurchase: 75, efFloor: 3000, goal: '2028-08-15', rebuildCap: null, rollMins: true,
+      flexGuide: [{ label: 'Gas', amt: 125 }, { label: 'Groceries', amt: 150 }, { label: 'Fun / other', amt: 75 }] },
+    accounts: { chase: null, allySpending: null, bucket: null, allySavings: null, asOf: t },
+    debts: [
+      newDebt({ name: 'Chase Card', kind: 'card', minFrom: 'extra', ph: { bal: 'last known 4,634.32', apr: 'from statement', min: 'from statement' } }),
+      newDebt({ name: 'Apple Card', kind: 'card', minFrom: 'extra', ph: { bal: 'last known 1,955.69', apr: 'from statement', min: 'from statement' } }),
+      ...[1, 2, 3, 4].map(i => newDebt({ name: `Private Loan ${i}`, kind: 'private', minFrom: 'fixed', ph: { bal: 'from servicer', apr: '6 – 13', min: '' } })),
+      newDebt({ name: 'Federal Group 1', kind: 'federal', minFrom: 'fixed', ph: { bal: 'from StudentAid.gov', apr: '', min: '' } })
+    ],
+    expenses: [], payments: [],
+    log: [{ t: new Date().toISOString(), d: t, msg: 'Discover paid off before setup (final $161.96 payment).' }]
+  };
+}
+let state, storageOK = true, MODEL = null;
+function migrate(s) {
+  const d = defaultState();
+  s.settings = Object.assign({}, d.settings, s.settings || {});
+  s.accounts = Object.assign({}, d.accounts, s.accounts || {});
+  for (const k of ['debts', 'expenses', 'payments', 'log']) if (!Array.isArray(s[k])) s[k] = [];
+  s.debts = s.debts.map(x => Object.assign(newDebt({}), x));
+  return s;
+}
+function load() {
+  try { const raw = localStorage.getItem(KEY); if (raw) { state = migrate(JSON.parse(raw)); return; } } catch (e) { storageOK = false; }
+  state = defaultState();
+}
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(state)); storageOK = true; } catch (e) { storageOK = false; }
+}
+function log(msg) { state.log.unshift({ t: new Date().toISOString(), d: todayISO(), msg }); if (state.log.length > 600) state.log.length = 600; }
+
+/* ---------- derived basics ---------- */
+const S_ = () => state.settings;
+const extraBase = () => r2(num(S_().paycheck) - num(S_().fixed) - num(S_().flexible) - num(S_().bigPurchase));
+const activeDebts = () => state.debts.filter(d => d.active);
+function estBal(d, asOf = todayISO()) {
+  const b = Math.max(0, num(d.anchorBal)); if (b <= 0.005) return 0;
+  const days = Math.max(0, diffDays(isISO(d.anchorDate) ? d.anchorDate : asOf, asOf));
+  return b + b * num(d.apr) / 100 / 365 * days;
+}
+const totalDebt = () => activeDebts().reduce((s, d) => s + estBal(d), 0);
+const avalancheOrder = () => activeDebts().filter(d => estBal(d) > 0.005).sort((a, b) => num(b.apr) - num(a.apr) || estBal(a) - estBal(b));
+const isProcessed = pd => state.payments.some(p => p.period === pd);
+function ctx() {
+  const T = todayISO(), cur = periodOf(T), processed = isProcessed(cur.payday);
+  return { T, cur, processed, first: processed ? nextPayday(cur.payday) : cur.payday };
+}
+
+/* ---------- expense funding ---------- */
+function expenseList(opts = {}) {
+  let l = state.expenses.filter(e => e.status !== 'cancelled' && e.id !== opts.exclude);
+  if (opts.draft) { l = l.filter(e => e.id !== opts.draft.id); if (opts.draft.status !== 'cancelled') l.push(opts.draft); }
+  return l.sort((a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : ((a.created || '') < (b.created || '') ? -1 : 1));
+}
+function bucketAt(date, c, bonus = 0) {
+  let b = num(state.accounts.bucket) + bonus, p = c.first, g = 0;
+  while (p <= date && g++ < 2400) { b += num(S_().bigPurchase); p = nextPayday(p); }
+  return b;
+}
+function bucketReadyDate(target, c, bonus = 0) {
+  let b = num(state.accounts.bucket) + bonus; if (b >= target) return c.T;
+  const add = num(S_().bigPurchase); if (add <= 0) return null;
+  let p = c.first;
+  for (let i = 0; i < 600; i++) { b += add; if (b >= target - 0.005) return p; p = nextPayday(p); }
+  return null;
+}
+/* Decide where each non-cancelled expense's money comes from. Processed in date order so the
+   Big Purchase bucket, flexible limit, emergency fund and paycheck extra are shared sensibly. */
+function computeAllocations(opts = {}) {
+  const c = opts.c || ctx(), S = S_(), extra = Math.max(0, extraBase()), flexLim = num(S.flexible), floor = num(S.efFloor);
+  const rb = opts.restore ? num(opts.restore.big) : 0, re = opts.restore ? num(opts.restore.ef) : 0;
+  const res = {}; let bucketUsed = 0, efUsed = 0; const flexUsed = {}, extraUsed = {};
+  for (const e of expenseList(opts)) {
+    const pd = periodOf(e.date).payday, epd = pd < c.first ? c.first : pd;
+    const auto = !e.override || e.override === 'auto', src = auto ? AUTO_SRC[e.type] : e.override;
+    if (e.status === 'paid' && e.alloc) {
+      const a = e.alloc;
+      res[e.id] = { flex: a.flex || 0, big: a.big || 0, debt: a.debt || 0, ef: a.ef || 0, notes: [], src };
+      flexUsed[pd] = (flexUsed[pd] || 0) + (a.flex || 0); extraUsed[epd] = (extraUsed[epd] || 0) + (a.debt || 0);
+      continue;
+    }
+    const amt = Math.max(0, num(e.amount)), a = { flex: 0, big: 0, debt: 0, ef: 0, notes: [], src };
+    if (src === 'flex') {
+      const room = Math.max(0, flexLim - (flexUsed[pd] || 0));
+      if (auto) {
+        a.flex = Math.min(amt, room); a.debt = amt - a.flex;
+        if (a.debt > 0.004) a.notes.push(`Only ${money(room)} of the ${money(flexLim)} flexible limit is left in the ${fmtDs(pd)} pay period, so ${money(a.debt)} comes out of the debt attack.`);
+      } else {
+        a.flex = amt;
+        if (amt > room + 0.004) a.notes.push(`This is ${money(amt - room)} over the pay-period flexible limit.`);
+      }
+    } else if (src === 'big') {
+      const avail = Math.max(0, bucketAt(e.date, c, rb) - bucketUsed);
+      a.big = Math.min(amt, avail); a.debt = amt - a.big;
+      if (a.debt > 0.004) {
+        a.notes.push(`The bucket will hold ${money(avail)} by ${fmtDs(e.date)}; the other ${money(a.debt)} comes out of the debt attack.`);
+        const w = bucketReadyDate(amt + bucketUsed, c, rb);
+        if (w && w > e.date) a.notes.push(`Waiting until the ${fmtD(w)} paycheck lets the bucket cover it entirely.`);
+      }
+      bucketUsed += a.big;
+    } else if (src === 'debt') {
+      a.debt = amt;
+    } else if (src === 'ef') {
+      const efAvail = Math.max(0, num(state.accounts.allySavings) + re - efUsed);
+      if (auto) {
+        const typ = epd.slice(8) === '15' ? '15' : 'eom';
+        const cardMins = activeDebts().filter(x => x.minFrom !== 'fixed' && x.due === typ && estBal(x) > 0.005).reduce((s, x) => s + Math.min(num(x.min), estBal(x)), 0);
+        const room = Math.max(0, extra - cardMins - (extraUsed[epd] || 0));
+        a.debt = Math.min(amt, room); const rest = amt - a.debt;
+        a.ef = Math.min(rest, efAvail); a.debt += rest - a.ef;
+        if (a.ef > 0.004) a.notes.push(`The ${fmtDs(epd)} paycheck's debt attack covers the first ${money(amt - a.ef - Math.max(0, a.debt - room))}; Ally Savings covers ${money(a.ef)}.`);
+      } else { a.ef = Math.min(amt, efAvail); a.debt = amt - a.ef; }
+      if (a.ef > 0.004) {
+        const after = efAvail - a.ef;
+        a.notes.push(after < floor - 0.005
+          ? `Ally Savings drops to ${money(after)} — ${money(floor - after)} under the floor. The debt attack rebuilds it before returning to full strength.`
+          : `Ally Savings stays at or above the ${money(floor)} floor.`);
+      }
+      if (!auto && e.type !== 'emergency') a.notes.push('This uses the emergency fund for something that isn\'t a true emergency.');
+      efUsed += a.ef;
+    }
+    flexUsed[pd] = (flexUsed[pd] || 0) + a.flex; extraUsed[epd] = (extraUsed[epd] || 0) + a.debt;
+    for (const k of ['flex', 'big', 'debt', 'ef']) a[k] = r2(a[k]);
+    res[e.id] = a;
+  }
+  return res;
+}
+
+/* ---------- the projection engine ----------
+   Steps paycheck by paycheck from the current (unprocessed) payday.
+   Per payday: accrue simple daily interest -> apply expense hits -> protect card minimums ->
+   take expense debt-portions from the extra attack (carrying any overflow) -> rebuild emergency
+   fund -> pay minimums -> avalanche the rest by APR with spillover. */
+function simulate(opts = {}) {
+  const c = opts.c || ctx(), S = S_(), floor = num(S.efFloor);
+  const extra = Math.max(0, extraBase() + num(opts.addMonthly) / 2);
+  const list = opts.noExpenses ? [] : expenseList(opts);
+  const allocs = opts.noExpenses ? {} : computeAllocations({ ...opts, c });
+  const charges = {}, efHits = {};
+  for (const e of list) {
+    const a = allocs[e.id]; if (!a) continue;
+    const p0 = periodOf(e.date).payday, pd = p0 < c.first ? c.first : p0;
+    const rem = Math.max(0, a.debt - num(e.debtCovered)); if (rem > 0.004) charges[pd] = (charges[pd] || 0) + rem;
+    const efPending = (opts.draft && e === opts.draft) ? true : e.status === 'planned';
+    if (efPending && a.ef > 0.004) efHits[pd] = (efHits[pd] || 0) + a.ef;
+  }
+  const debts = activeDebts().map(d => {
+    const bal = Math.max(0, num(d.anchorBal));
+    return { id: d.id, name: d.name, apr: num(d.apr), min: Math.max(0, num(d.min)), minFrom: d.minFrom, due: d.due, bal,
+      last: isISO(d.anchorDate) ? d.anchorDate : c.T, anchorDate: d.anchorDate, payoff: bal <= 0.005 ? (d.paidOffDate || c.T) : null };
+  });
+  const out = { done: false, never: false, date: null, finalPayday: null, interest: 0, steps: [], payoffs: {}, efRebuiltDate: null };
+  let ef = num(state.accounts.allySavings) + (opts.restore ? num(opts.restore.ef) : 0);
+  if (!debts.some(d => d.bal > 0.005)) { out.done = true; out.date = c.T; out.finalPayday = c.T; debts.forEach(d => out.payoffs[d.id] = d.payoff); return out; }
+  const want = opts.detail || 1, maxSteps = opts.maxSteps || 1100;
+  let payday = c.first, prevDate = c.T, carry = 0;
+  for (let i = 0; i < maxSteps; i++) {
+    const date = payday < c.T ? c.T : payday, type = payday.slice(8) === '15' ? '15' : 'eom', L = {};
+    for (const d of debts) {
+      let int = 0;
+      if (d.bal > 0.005) { const days = Math.max(0, diffDays(d.last, date)); int = d.bal * d.apr / 100 / 365 * days; d.bal += int; out.interest += int; }
+      const since = d.last; if (date > d.last) d.last = date;
+      L[d.id] = { id: d.id, name: d.name, apr: d.apr, minFrom: d.minFrom, since, interest: int, before: d.bal, min: 0, extra: 0, after: 0 };
+    }
+    if (efHits[payday]) ef -= efHits[payday];
+    const due = debts.filter(d => d.due === type);
+    let prot = 0; for (const d of due) if (d.minFrom !== 'fixed' && d.bal > 0.005) prot += Math.min(d.min, d.bal);
+    prot = Math.min(prot, extra);
+    let red = extra - prot;
+    const charge = charges[payday] || 0; carry += charge;
+    const take = Math.min(carry, red); carry -= take; red -= take;
+    let rebuild = 0;
+    if (ef < floor - 0.005) {
+      const cap = (S.rebuildCap == null || S.rebuildCap === '') ? Infinity : num(S.rebuildCap);
+      rebuild = Math.max(0, Math.min(floor - ef, red, cap)); ef += rebuild; red -= rebuild;
+      if (ef >= floor - 0.005) out.efRebuiltDate = date;
+    }
+    let pool = red + prot; const cap0 = pool; let fixedCap = 0;
+    for (const d of due) {
+      if (d.min <= 0) continue;
+      if (d.minFrom === 'fixed') {
+        const m = Math.min(d.min, d.bal); d.bal -= m; L[d.id].min += m;
+        if (S.rollMins) { fixedCap += d.min; pool += d.min - m; } else fixedCap += m;
+      } else { const m = Math.min(d.min, d.bal, pool); d.bal -= m; pool -= m; L[d.id].min += m; }
+    }
+    const order = debts.filter(d => d.bal > 0.005).sort((a, b) => b.apr - a.apr || a.bal - b.bal);
+    const targetId = order.length ? order[0].id : null;
+    for (const d of order) { if (pool <= 0.004) break; const p = Math.min(pool, d.bal); d.bal -= p; pool -= p; L[d.id].extra += p; }
+    let remaining = 0;
+    for (const d of debts) { if (d.bal < 0.005) { d.bal = 0; if (!d.payoff) d.payoff = date; } L[d.id].after = d.bal; remaining += d.bal; }
+    if (out.steps.length < want) out.steps.push({ payday, date, type, extraBase: extra, charge, take, carry, rebuild, ef, prot,
+      available: extra - take - rebuild, targetId, leftover: pool, lines: Object.values(L) });
+    if (remaining < 0.005) {
+      const used = Object.values(L).reduce((s, l) => s + l.min + l.extra, 0), capT = cap0 + fixedCap;
+      const frac = capT > 0 ? Math.min(1, Math.max(0, used / capT)) : 1;
+      out.done = true; out.finalPayday = date;
+      out.date = i === 0 ? date : addDays(prevDate, Math.max(1, Math.round(diffDays(prevDate, date) * frac)));
+      break;
+    }
+    prevDate = date; payday = nextPayday(payday);
+  }
+  if (!out.done) out.never = true;
+  debts.forEach(d => out.payoffs[d.id] = d.payoff);
+  return out;
+}
+function neededMonthly(base, c) {
+  const g = S_().goal; if (!isISO(g) || g <= c.T) return null;
+  if (base.done && base.date <= g) return 0;
+  const steps = countPaydays(c.first, g) + 3;
+  const ok = x => { const s = simulate({ addMonthly: x, c, maxSteps: steps }); return s.done && s.date <= g; };
+  let lo = 0, hi = 500; while (!ok(hi)) { lo = hi; hi *= 2; if (hi > 400000) return null; }
+  for (let k = 0; k < 18; k++) { const m = (lo + hi) / 2; if (ok(m)) hi = m; else lo = m; }
+  return Math.ceil(hi / 5) * 5;
+}
+function model() {
+  if (!MODEL) {
+    const c = ctx(), base = simulate({ detail: 2, c }), none = simulate({ noExpenses: true, c });
+    MODEL = { c, base, none, allocs: computeAllocations({ c }), needed: neededMonthly(base, c), imp: {} };
+  }
+  return MODEL;
+}
+function hasPendingImpact(e, a) {
+  if (!a || e.status === 'cancelled') return false;
+  return (a.debt - num(e.debtCovered) > 0.004) || (e.status === 'planned' && a.ef > 0.004);
+}
+function liveImpact(e) {
+  const M = model(); if (M.imp[e.id]) return M.imp[e.id];
+  const wo = simulate({ exclude: e.id, c: M.c }), w = M.base;
+  const r = (w.done && wo.done) ? { days: diffDays(wo.date, w.date), interest: w.interest - wo.interest } : { days: null, interest: null };
+  M.imp[e.id] = r; return r;
+}
+function draftImpact(draft) {
+  const c = ctx(), opts = { draft, restore: draft._restore, c };
+  const epd = (p => p < c.first ? c.first : p)(periodOf(draft.date).payday);
+  const n = Math.min(400, countPaydays(c.first, epd) + 1);
+  const w = simulate({ ...opts, detail: n }), wo = simulate({ exclude: draft.id, restore: draft._restore, c, detail: n });
+  return { c, epd, w, wo, alloc: computeAllocations(opts)[draft.id],
+    days: (w.done && wo.done) ? diffDays(wo.date, w.date) : null, interest: (w.done && wo.done) ? w.interest - wo.interest : null };
+}
+
+/* ---------- mutations ---------- */
+function applyPaid(e, deduct) {
+  const a = computeAllocations()[e.id] || { flex: 0, big: 0, debt: 0, ef: 0 };
+  e.alloc = { flex: r2(a.flex), big: r2(a.big), debt: r2(a.debt), ef: r2(a.ef) };
+  e.status = 'paid'; e.paidOn = todayISO();
+  if (deduct) {
+    const A = state.accounts;
+    A.bucket = r2(num(A.bucket) - a.big);
+    A.allySpending = r2(num(A.allySpending) - a.big - a.flex);
+    A.allySavings = r2(num(A.allySavings) - a.ef);
+    e.deducted = { big: a.big, flex: a.flex, ef: a.ef };
+  }
+}
+function revertPaid(e) {
+  if (e.deducted) {
+    const A = state.accounts, d = e.deducted;
+    A.bucket = r2(num(A.bucket) + num(d.big));
+    A.allySpending = r2(num(A.allySpending) + num(d.big) + num(d.flex));
+    A.allySavings = r2(num(A.allySavings) + num(d.ef));
+  }
+  delete e.deducted; delete e.alloc; delete e.paidOn; e.status = 'planned';
+}
+function pendingPortions(c) {
+  const allocs = computeAllocations({ c });
+  return expenseList({}).map(e => {
+    const a = allocs[e.id], p0 = periodOf(e.date).payday, epd = p0 < c.first ? c.first : p0;
+    return { e, epd, rem: Math.max(0, (a ? a.debt : 0) - num(e.debtCovered)) };
+  }).filter(x => x.rem > 0.004 && x.epd <= c.first);
+}
+function processPaycheck(addBucket) {
+  const c = ctx();
+  if (c.processed) { toast('This paycheck was already processed.'); return; }
+  const B = simulate({ detail: 1, c }), st = B.steps[0];
+  if (!st) { toast('Nothing to pay.'); return; }
+  const portions = pendingPortions(c);
+  const snap = { debts: JSON.parse(JSON.stringify(state.debts)), accounts: { ...state.accounts },
+    covered: Object.fromEntries(state.expenses.map(e => [e.id, num(e.debtCovered)])) };
+  const paidOff = [];
+  for (const l of st.lines) {
+    const d = state.debts.find(x => x.id === l.id); if (!d) continue;
+    if (l.before > 0.005 && l.after <= 0.005) { d.paidOffDate = st.date; paidOff.push(d.name); }
+    d.anchorBal = r2(l.after); d.anchorDate = st.date;
+  }
+  let rem = st.take; const absorbed = [];
+  for (const x of portions) {
+    if (rem <= 0.004) break;
+    const t = Math.min(rem, x.rem); x.e.debtCovered = r2(num(x.e.debtCovered) + t); rem -= t;
+    absorbed.push({ id: x.e.id, desc: x.e.desc, amt: r2(t) });
+  }
+  const A = state.accounts;
+  if (st.rebuild > 0.004) A.allySavings = r2(num(A.allySavings) + st.rebuild);
+  const bp = num(S_().bigPurchase);
+  if (addBucket && bp > 0) { A.bucket = r2(num(A.bucket) + bp); A.allySpending = r2(num(A.allySpending) + bp); }
+  const lines = st.lines.filter(l => l.min + l.extra > 0.004).map(l => ({ id: l.id, name: l.name, interest: r2(l.interest), min: r2(l.min), extra: r2(l.extra), before: r2(l.before), after: r2(l.after), minFrom: l.minFrom }));
+  const total = r2(lines.reduce((s, l) => s + l.min + l.extra, 0));
+  state.payments.unshift({ id: uid(), period: c.cur.payday, periodEnd: c.cur.end, date: st.date, extraBase: r2(st.extraBase), take: r2(st.take),
+    rebuild: r2(st.rebuild), available: r2(st.available), bucketAdded: addBucket ? bp : 0, total, lines, absorbed, paidOff, snap });
+  log(`Paid the ${fmtD(c.cur.payday)} paycheck: ${money(total)} to debts (${money(st.available)} extra attack).${paidOff.length ? ' Paid off: ' + paidOff.join(', ') + '.' : ''}`);
+  save(); closeModal(); render();
+  toast(paidOff.length ? `🎉 ${paidOff.join(' & ')} paid off!` : 'Paycheck logged.');
+}
+function undoPayment() {
+  const p = state.payments[0]; if (!p || !p.snap) return;
+  state.debts = p.snap.debts; state.accounts = p.snap.accounts;
+  for (const e of state.expenses) if (p.snap.covered[e.id] != null) e.debtCovered = p.snap.covered[e.id];
+  state.payments.shift();
+  log(`Undid the ${fmtD(p.period)} paycheck payment.`);
+  save(); closeModal(); render(); toast('Payment undone.');
+}
+
+/* ---------- icons ---------- */
+const svg = (p, s = 20) => `<svg viewBox="0 0 24 24" width="${s}" height="${s}" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+const ICON = {
+  logo: svg('<path d="M3 19 9.5 8l3.5 6 2.5-3.5L21 19z"/><path d="m8 11 1.5 1.5L11 11"/>', 18),
+  home: svg('<path d="M3 10.5 12 4l9 6.5"/><path d="M5 9.5V20h14V9.5"/>'),
+  receipt: svg('<path d="M6 3h12v18l-3-2-3 2-3-2-3 2z"/><path d="M9 8h6M9 12h6"/>'),
+  layers: svg('<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 13 9 5 9-5"/>'),
+  wallet: svg('<rect x="3" y="6" width="18" height="14" rx="2.5"/><path d="M3 10h18M16 15h2"/>'),
+  clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'),
+  plus: svg('<path d="M12 5v14M5 12h14"/>'),
+  check: svg('<path d="m5 12.5 4.5 4.5L19 7.5"/>', 22),
+  x: svg('<path d="M6 6l12 12M18 6 6 18"/>', 18),
+  alert: svg('<path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/>'),
+  info: svg('<circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/>')
+};
+
+/* ---------- modal + toast ---------- */
+let modalCleanup = null;
+function openModal({ title, body, foot = '', wide = false, onMount }) {
+  const root = document.getElementById('modal-root');
+  root.innerHTML = `<div class="scrim" data-scrim><div class="sheet ${wide ? 'wide' : ''}" role="dialog" aria-modal="true" aria-label="${esc(title)}">
+    <div class="hd"><h2>${title}</h2><button class="x" data-act="close" aria-label="Close">${ICON.x}</button></div>
+    <div class="bd">${body}</div>${foot ? `<div class="ft">${foot}</div>` : ''}</div></div>`;
+  document.body.style.overflow = 'hidden';
+  if (onMount) modalCleanup = onMount(root.querySelector('.sheet')) || null;
+}
+function closeModal() {
+  if (modalCleanup) { try { modalCleanup(); } catch (e) {} modalCleanup = null; }
+  document.getElementById('modal-root').innerHTML = ''; document.body.style.overflow = '';
+}
+let toastTimer;
+function toast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('on'), 2600); }
+
+/* ============================================================
+   Views
+   ============================================================ */
+const TABS = [['dashboard', 'Dashboard', ICON.home], ['expenses', 'Expenses', ICON.receipt], ['debts', 'Debts', ICON.layers], ['accounts', 'Accounts', ICON.wallet], ['history', 'History', ICON.clock]];
+const view = () => { const v = (location.hash || '').slice(1); return TABS.some(t => t[0] === v) ? v : 'dashboard'; };
+function shell(content) {
+  const v = view();
+  return `<header class="top"><div class="wrap topin">
+      <div class="brand"><span class="mark">${ICON.logo}</span>Avalanche</div>
+      <nav class="tabs">${TABS.map(([k, l]) => `<button class="tab ${v === k ? 'on' : ''}" data-act="nav" data-v="${k}">${l}</button>`).join('')}</nav>
+      <button class="btn primary sm hide-m" data-act="add-expense">${ICON.plus} Add expense</button>
+    </div></header>
+    <main class="wrap">${content}</main>
+    <nav class="bottom">${TABS.map(([k, l, i]) => `<button class="${v === k ? 'on' : ''}" data-act="nav" data-v="${k}">${i}<span>${l}</span></button>`).join('')}</nav>
+    <button class="fab" data-act="add-expense">${ICON.plus}Expense</button>`;
+}
+
+function banners(c, B) {
+  const S = S_(), A = state.accounts, out = [];
+  if (!storageOK) out.push(`<div class="banner bad">${ICON.alert}<div>Browser storage is blocked, so changes won't survive a reload. Serve the file with a local server (see History → Backup) and export a backup now.</div></div>`);
+  const efBal = num(A.allySavings);
+  if (efBal < num(S.efFloor) - 0.005) {
+    const st = B.steps[0];
+    out.push(`<div class="banner bad">${ICON.alert}<div><b>Emergency fund is ${money(num(S.efFloor) - efBal)} below the ${money(S.efFloor)} floor.</b> The debt attack rebuilds it first${st && st.rebuild > 0.004 ? ` — ${money(st.rebuild)} from ${c.processed ? 'the next' : 'this'} paycheck` : ''}${B.efRebuiltDate ? `, back to the floor by ${fmtD(B.efRebuiltDate)}` : ''}.</div></div>`);
+  }
+  const missing = activeDebts().filter(d => estBal(d) > 0.005 && (d.apr == null || d.apr === ''));
+  if (missing.length) out.push(`<div class="banner warn">${ICON.alert}<div class="grow">${missing.map(d => esc(d.name)).join(', ')} ${missing.length > 1 ? 'have' : 'has'} no APR, so the avalanche treats ${missing.length > 1 ? 'them' : 'it'} as 0%.</div><a data-act="nav" data-v="debts">Fix</a></div>`);
+  const stale = activeDebts().filter(d => estBal(d) > 0.005 && (!isISO(d.verifiedDate) || diffDays(d.verifiedDate, c.T) > 45));
+  if (stale.length) out.push(`<div class="banner info">${ICON.info}<div class="grow">${plural(stale.length, 'balance')} not verified in 45+ days. Refreshing from lender apps re-anchors the model.</div><a data-act="nav" data-v="debts">Update</a></div>`);
+  return out.join('');
+}
+
+function viewDashboard() {
+  const M = model(), c = M.c, S = S_(), B = M.base;
+  const total = totalDebt(), order = avalancheOrder(), tgt = order[0], nxt = order[1];
+  let dateBlock;
+  if (total < 0.005) dateBlock = `<div class="eyebrow">Status</div><div class="big">Debt-free 🎉</div><div class="sub">Every active debt is at $0.</div>`;
+  else if (B.done) {
+    const dd = diffDays(S.goal, B.date);
+    dateBlock = `<div class="eyebrow">Projected debt-free</div><div class="big">${fmtD(B.date)}</div>
+      <div class="sub">${spanText(c.T, B.date)} from today · final payment with the ${fmtD(B.finalPayday)} paycheck</div>
+      <div class="goal ${dd > 0 ? 'late' : 'ok'}">${dd > 0 ? `<b>${plural(dd, 'day')}</b> (${spanText(S.goal, B.date)}) after the ${fmtD(S.goal)} goal` : dd === 0 ? `<b>Right on</b> the ${fmtD(S.goal)} goal` : `<b>${plural(-dd, 'day')}</b> ahead of the ${fmtD(S.goal)} goal`}</div>`;
+  } else dateBlock = `<div class="eyebrow">Projected debt-free</div><div class="big">Not reachable</div><div class="sub">At this budget, payments don't outpace interest. Check APRs and the budget.</div>`;
+  const start = num(state.startTotal), pct = start > 0 ? Math.max(0, Math.min(1, (start - total) / start)) : 0;
+  const nd = M.needed, delay = (B.done && M.none.done) ? diffDays(M.none.date, B.date) : null;
+  const hero = `<section class="card hero">${dateBlock}
+    <div class="split">
+      <div><div class="label">Total debt</div><div class="xl">${money(total)}</div>
+        ${start > 0 ? `<div class="bar"><i style="width:${(pct * 100).toFixed(1)}%"></i></div><div class="hint">${money(Math.max(0, start - total))} paid down since setup · ${(pct * 100).toFixed(1)}%</div>` : ''}</div>
+      <div><div class="label">To hit the goal</div><div class="lg" style="margin-top:6px">${total < 0.005 ? 'Done' : nd === 0 ? 'On track' : nd == null ? '—' : `+${money0(nd)}<small>/mo</small>`}</div>
+        <div class="hint">${nd > 0 ? `extra income into the attack (≈ ${money0(nd / 2)} per paycheck)` : nd === 0 ? 'no extra income needed' : 'goal date has passed or is out of reach'}</div></div>
+    </div>
+    ${delay ? `<div class="hint mt">Planned unusual expenses are moving this date by <b style="color:var(--warn)">${fmtDelta(delay)}</b>.</div>` : ''}
+  </section>`;
+  return banners(c, B) + `<div class="grid g2">${hero}${paycheckCard(c, B, tgt)}</div>
+    <div class="grid g2e mt16">${targetCard(tgt, nxt, B)}${upcomingCard(M)}</div>
+    ${accountTiles()}`;
+}
+
+function flexThisPeriod(c, allocs) {
+  return state.expenses.filter(e => e.status !== 'cancelled' && periodOf(e.date).payday === c.cur.payday)
+    .reduce((s, e) => s + (allocs[e.id] ? allocs[e.id].flex : 0), 0);
+}
+function paycheckCard(c, B, tgt) {
+  const S = S_(), st = B.steps[0], M = model();
+  const head = `<div class="eyebrow">Pay period · ${fmtDs(c.cur.start)} – ${fmtD(c.cur.end)}</div>`;
+  const fl = flexThisPeriod(c, M.allocs);
+  const flexLine = fl > 0.004 ? `<div class="kv"><span>Flexible logged this period</span><b>${money(fl)} of ${money(S.flexible)}</b></div>` : '';
+  if (c.processed) {
+    const p = state.payments.find(x => x.period === c.cur.payday), nx = c.first, n = diffDays(c.T, nx);
+    return `<section class="card">${head}
+      <div class="done"><span class="ck">${ICON.check}</span><div><div class="lg">Paid ${fmtDs(p.date)}</div><div class="hint">${money(p.total)} sent to debts this paycheck</div></div></div>
+      <div class="kvs"><div class="kv"><span>Next payday</span><b>${fmtD(nx)} · ${n <= 0 ? 'today' : n === 1 ? 'tomorrow' : `in ${n} days`}</b></div>
+      ${st ? `<div class="kv"><span>Projected extra attack</span><b>${money(st.available)}</b></div>` : ''}
+      ${st && st.take > 0.004 ? `<div class="kv neg"><span>Unusual expenses hitting it</span><b>−${money(st.take)}</b></div>` : ''}
+      ${st && st.rebuild > 0.004 ? `<div class="kv neg"><span>Emergency-fund rebuild</span><b>−${money(st.rebuild)}</b></div>` : ''}${flexLine}</div>
+      <button class="btn pay" disabled>Paid this paycheck ✓</button></section>`;
+  }
+  if (!st || totalDebt() < 0.005) return `<section class="card">${head}<div class="lg mt">Nothing left to attack 🎉</div><div class="hint">Your ${money(extraBase())} extra can go to savings goals now.</div></section>`;
+  return `<section class="card">${head}
+    <div class="label mt">Extra attack available this paycheck</div>
+    <div class="big ${st.available < st.extraBase - 0.005 ? 'down' : ''}">${money(st.available)}</div>
+    <div class="kvs">
+      <div class="kv"><span>Normal extra attack</span><b>${money(st.extraBase)}</b></div>
+      ${st.take > 0.004 ? `<div class="kv neg"><span>Unusual expenses</span><b>−${money(st.take)}</b></div>` : ''}
+      ${st.rebuild > 0.004 ? `<div class="kv neg"><span>Emergency-fund rebuild</span><b>−${money(st.rebuild)}</b></div>` : ''}
+      ${st.carry > 0.004 ? `<div class="kv"><span>Still to absorb from later paychecks</span><b>${money(st.carry)}</b></div>` : ''}
+      ${flexLine}
+    </div>
+    ${tgt ? `<div class="goesto">→ Goes to <b>${esc(tgt.name)}</b> · ${fmtApr(tgt.apr)}${st.prot > 0.004 ? ` (after ${money(st.prot)} of card minimums)` : ''}</div>` : ''}
+    <button class="btn pay" data-act="pay-preview">Paid this paycheck</button>
+    <div class="hint center mt8">Payday ${fmtD(c.cur.payday)} · not processed yet</div>
+  </section>`;
+}
+function targetCard(tgt, nxt, B) {
+  if (!tgt) return `<section class="card"><div class="eyebrow">Avalanche target</div><div class="lg mt">None — all clear</div></section>`;
+  const e = estBal(tgt), acc = e - num(tgt.anchorBal), po = B.payoffs[tgt.id];
+  return `<section class="card"><div class="eyebrow">Current avalanche target</div>
+    <div class="tgname">${esc(tgt.name)} <span class="pill ok">${fmtApr(tgt.apr)}</span></div>
+    <div class="big">${money(e)}</div>
+    <div class="hint">${acc > 0.004 ? `Includes ~${money(acc)} interest since ${fmtDs(tgt.anchorDate)}` : `As of ${fmtD(tgt.anchorDate)}`}</div>
+    <div class="kvs"><div class="kv"><span>Projected paid off</span><b>${po ? fmtD(po) : '—'}</b></div>
+    ${nxt ? `<div class="kv"><span>Next up</span><b>${esc(nxt.name)} · ${fmtApr(nxt.apr)}</b></div>` : ''}</div>
+    <button class="btn sm ghost mt8" data-act="nav" data-v="debts">All debts →</button></section>`;
+}
+function allocChips(a) {
+  return ['flex', 'big', 'debt', 'ef'].filter(k => a[k] > 0.004).map(k => `<span class="chip"><i class="dot ${k}"></i>${SRC_SHORT[k]} ${money(a[k])}</span>`).join('');
+}
+function upcomingCard(M) {
+  const planned = state.expenses.filter(e => e.status === 'planned').sort((a, b) => a.date < b.date ? -1 : 1);
+  const rows = planned.slice(0, 5).map(e => {
+    const a = M.allocs[e.id], imp = hasPendingImpact(e, a) ? liveImpact(e) : { days: 0 };
+    const srcs = a ? ['flex', 'big', 'debt', 'ef'].filter(k => a[k] > 0.004).map(k => SRC_SHORT[k]).join(' + ') : '';
+    return `<button class="xrow" data-act="edit-expense" data-id="${e.id}"><div><b>${esc(e.desc)}</b><span>${fmtDs(e.date)} · ${srcs || TYPE[e.type]}</span></div>
+      <div class="r"><b>${money(num(e.amount))}</b><span class="${imp.days > 0 ? 'late' : ''}">${imp.days ? fmtDelta(imp.days) : 'no delay'}</span></div></button>`;
+  }).join('');
+  return `<section class="card"><div class="ph" style="margin:0 0 6px"><div class="eyebrow">Upcoming unusual expenses</div>
+    <button class="btn sm" data-act="add-expense">${ICON.plus} Add</button></div>
+    ${rows || `<div class="empty">Nothing planned. Add tires, gifts, tickets — anything outside the steady state — to see where the money should come from.</div>`}
+    ${planned.length > 5 ? `<button class="btn sm ghost mt8" data-act="nav" data-v="expenses">All ${planned.length} planned →</button>` : ''}
+  </section>`;
+}
+function accountTiles() {
+  const A = state.accounts, S = S_(), ef = num(A.allySavings), ok = ef >= num(S.efFloor) - 0.005;
+  const tile = (l, v, h, cls = '') => `<button class="tile ${cls}" data-act="nav" data-v="accounts"><div class="label">${l}</div><div class="v">${money(num(v))}</div><div class="hint">${h}</div></button>`;
+  return `<div class="tiles mt16">
+    ${tile('Chase Checking', A.chase, 'Bills · loans · attack')}
+    ${tile('Ally Spending', num(A.allySpending) - num(A.bucket), `flexible · ${money(num(A.allySpending))} total`)}
+    ${tile('Big Purchase', A.bucket, `+${money(S.bigPurchase)} per paycheck`)}
+    ${tile('Emergency fund', A.allySavings, ok ? `at/above ${money0(S.efFloor)} floor` : `${money(num(S.efFloor) - ef)} below floor`, ok ? '' : 'bad')}
+  </div><div class="hint mt8">Account balances as of ${fmtD(A.asOf)} · <a data-act="nav" data-v="accounts">update</a></div>`;
+}
+
+/* ---------- Expenses ---------- */
+let expFilter = 'planned';
+function viewExpenses() {
+  const M = model();
+  const groups = { planned: [], paid: [], cancelled: [] };
+  for (const e of state.expenses) (groups[e.status] || groups.planned).push(e);
+  groups.planned.sort((a, b) => a.date < b.date ? -1 : 1);
+  groups.paid.sort((a, b) => a.date > b.date ? -1 : 1);
+  groups.cancelled.sort((a, b) => a.date > b.date ? -1 : 1);
+  const list = groups[expFilter];
+  const pendingDelay = (M.base.done && M.none.done) ? diffDays(M.none.date, M.base.date) : null;
+  const plannedTotal = groups.planned.reduce((s, e) => s + num(e.amount), 0);
+  return `<div class="ph"><div><h1>Expenses</h1><div class="sub">Irregular costs only — no need to log every coffee.</div></div>
+      <button class="btn primary" data-act="add-expense">${ICON.plus} Add expense</button></div>
+    <div class="grid g2e" style="margin-bottom:16px">
+      <section class="card"><div class="eyebrow">Planned</div><div class="xl">${money(plannedTotal)}</div><div class="hint">${plural(groups.planned.length, 'expense')} not yet paid</div></section>
+      <section class="card"><div class="eyebrow">Debt-free date impact (pending)</div><div class="xl ${pendingDelay > 0 ? 'late' : ''}">${fmtDelta(pendingDelay)}</div><div class="hint">from expenses not yet absorbed by a paycheck</div></section>
+    </div>
+    <section class="card">
+      <div class="seg" style="margin-bottom:14px;width:max-content;max-width:100%">${['planned', 'paid', 'cancelled'].map(k => `<button class="${expFilter === k ? 'on' : ''}" data-act="exp-filter" data-v="${k}">${k[0].toUpperCase() + k.slice(1)} · ${groups[k].length}</button>`).join('')}</div>
+      ${list.length ? list.map(e => expenseItem(e, M.allocs[e.id])).join('') : `<div class="empty">No ${expFilter} expenses.</div>`}
+    </section>`;
+}
+function expenseItem(e, a) {
+  const pill = { planned: 'info', paid: 'ok', cancelled: '' }[e.status];
+  let imp = '';
+  if (hasPendingImpact(e, a)) {
+    const i = liveImpact(e);
+    imp = `<div class="imp ${i.days > 0 ? 'late' : ''}">Debt-free date ${fmtDelta(i.days)}${i.interest > 0.5 ? ` · ≈ ${money0(i.interest)} more interest` : ''}</div>`;
+  } else if (e.status !== 'cancelled' && e.impact && e.impact.days != null) {
+    imp = `<div class="imp muted">Impact when logged: ${fmtDelta(e.impact.days)}${a && a.debt > 0.004 ? ' · fully absorbed' : ''}</div>`;
+  }
+  const absorbed = a && a.debt > 0.004 && e.status !== 'cancelled' ? `<div class="hint">${money(Math.min(num(e.debtCovered), a.debt))} of ${money(a.debt)} debt-attack share absorbed by paychecks</div>` : '';
+  return `<div class="xitem ${e.status}">
+    <div class="xmain"><div><b style="font-size:16px">${esc(e.desc)}</b><div class="hint">${fmtD(e.date)} · ${TYPE[e.type]}${e.override && e.override !== 'auto' ? ' · source overridden' : ''}</div></div>
+      <div class="r"><div class="lg">${money(num(e.amount))}</div><span class="pill ${pill}">${e.status}</span></div></div>
+    ${a && e.status !== 'cancelled' ? `<div class="allocs">${allocChips(a)}</div>` : ''}${imp}${absorbed}
+    ${e.notes ? `<div class="hint mt8">${esc(e.notes)}</div>` : ''}
+    <div class="xact">
+      ${e.status === 'planned' ? `<button class="btn sm primary" data-act="pay-expense" data-id="${e.id}">Mark paid</button>` : ''}
+      <button class="btn sm" data-act="edit-expense" data-id="${e.id}">Edit</button>
+      ${e.status !== 'cancelled' ? `<button class="btn sm ghost" data-act="cancel-expense" data-id="${e.id}">Cancel</button>`
+        : `<button class="btn sm ghost" data-act="restore-expense" data-id="${e.id}">Restore</button><button class="btn sm ghost danger" data-act="delete-expense" data-id="${e.id}">Delete</button>`}
+    </div></div>`;
+}
+
+const TYPES = [
+  ['flexible', 'Flexible', 'Everyday spending from Ally Spending, within the pay-period limit'],
+  ['planned', 'Planned / QoL', 'Gifts, tickets, travel, ski pass, furniture — Big Purchase bucket first'],
+  ['essential', 'Essential', 'Tires, repairs, oil change, medical — trims the debt attack, savings untouched'],
+  ['emergency', 'True emergency', 'Urgent and too big for cash flow — Ally Savings if needed']
+];
+function openExpense(id) {
+  const ex = id ? state.expenses.find(e => e.id === id) : null;
+  const e = ex || { id: '__draft', desc: '', amount: '', date: todayISO(), type: 'essential', override: 'auto', status: 'planned', notes: '' };
+  const body = `<form id="xform" class="fgrid" autocomplete="off" onsubmit="return false">
+      <label class="f span2"><span>Description</span><input name="desc" value="${esc(e.desc)}" placeholder="e.g. New tires" list="xsugg"></label>
+      <datalist id="xsugg">${['New tires', 'Car repair', 'Oil change', 'Haircut', 'Anniversary dinner', 'Birthday gift', 'Furniture', 'Concert tickets', 'Ski pass', 'Travel', 'Medical bill'].map(s => `<option value="${s}">`).join('')}</datalist>
+      <label class="f"><span>Amount</span><input name="amount" inputmode="decimal" value="${e.amount === '' ? '' : num(e.amount)}" placeholder="0.00"></label>
+      <label class="f"><span>Date</span><input name="date" type="date" value="${e.date}"></label>
+      <div class="f span2"><span>Type</span><div class="types">${TYPES.map(([v, l, h]) => `<label class="type"><input type="radio" name="type" value="${v}" ${e.type === v ? 'checked' : ''}><b>${l}</b><small>${h}</small></label>`).join('')}</div></div>
+      <label class="f"><span>Funding source</span><select name="override">${[['auto', 'Recommended'], ['flex', 'Ally Spending'], ['big', 'Big Purchase bucket'], ['debt', 'Reduce debt attack'], ['ef', 'Ally Savings (emergency)']].map(([v, l]) => `<option value="${v}" ${(e.override || 'auto') === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <label class="f"><span>Status</span><select name="status">${[['planned', 'Planned'], ['paid', 'Paid'], ...(ex ? [['cancelled', 'Cancelled']] : [])].map(([v, l]) => `<option value="${v}" ${e.status === v ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+      <label class="chk span2" id="deductRow" style="display:${e.status === 'paid' ? 'flex' : 'none'}"><input type="checkbox" name="deduct" ${!ex || e.status !== 'paid' || e.deducted ? 'checked' : ''}> Update bucket / Ally balances for this expense</label>
+      <label class="f span2"><span>Notes</span><textarea name="notes" rows="2" placeholder="Optional">${esc(e.notes)}</textarea></label>
+    </form><div id="xprev" class="preview"></div>`;
+  const foot = `${ex ? `<button class="btn ghost danger lft" data-act="delete-expense" data-id="${ex.id}">Delete</button>` : ''}
+    <button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="save-expense" data-id="${ex ? ex.id : ''}">${ex ? 'Save changes' : 'Add expense'}</button>`;
+  openModal({ title: ex ? 'Edit expense' : 'Add expense', body, foot, onMount: sheet => {
+    const f = sheet.querySelector('#xform'); let t;
+    const upd = () => { clearTimeout(t); t = setTimeout(() => {
+      const d = readXForm(ex); sheet.querySelector('#deductRow').style.display = d.status === 'paid' ? 'flex' : 'none';
+      sheet.querySelector('#xprev').innerHTML = expensePreview(d);
+    }, 90); };
+    f.addEventListener('input', upd); f.addEventListener('change', upd);
+    sheet.querySelector('#xprev').innerHTML = expensePreview(readXForm(ex));
+    if (!ex) setTimeout(() => f.querySelector('[name=desc]').focus(), 60);
+  } });
+}
+function readXForm(ex) {
+  const f = document.getElementById('xform'), fd = new FormData(f), dt = fd.get('date');
+  const d = { id: ex ? ex.id : '__draft', desc: String(fd.get('desc') || '').trim(), amount: num(fd.get('amount')), date: isISO(dt) ? dt : todayISO(),
+    type: fd.get('type') || 'essential', override: fd.get('override') || 'auto', status: fd.get('status') || 'planned', notes: String(fd.get('notes') || ''),
+    debtCovered: ex ? num(ex.debtCovered) : 0, created: ex ? ex.created : new Date().toISOString(), deduct: fd.get('deduct') === 'on' };
+  if (ex && ex.status === 'paid' && ex.deducted) d._restore = ex.deducted;
+  return d;
+}
+function expensePreview(d) {
+  if (!(d.amount > 0)) return `<div class="hint">Enter an amount to see where the money should come from and what it does to your debt-free date.</div>`;
+  if (d.status === 'cancelled') return `<div class="hint">Cancelled expenses don't affect the plan.</div>`;
+  const r = draftImpact({ ...d, status: d.status === 'paid' ? 'planned' : d.status }), a = r.alloc, c = r.c;
+  if (!a) return '';
+  const auto = d.override === 'auto';
+  let h = `<div class="eyebrow">${auto ? 'Recommended' : 'Your choice'} · ${esc(d.desc || 'This expense')} · ${money(d.amount)}</div>`;
+  h += ['flex', 'big', 'debt', 'ef'].filter(k => a[k] > 0.004).map(k => `<div class="arow"><i class="dot ${k}"></i><span>${SRC[k]}</span><b>${money(a[k])}</b></div>`).join('');
+  if (a.ef <= 0.004) h += `<div class="okline">✓ Emergency fund untouched</div>`;
+  h += a.notes.map(n => `<div class="note">${n}</div>`).join('');
+  const sw = r.w.steps.find(s => s.payday === r.epd), so = r.wo.steps.find(s => s.payday === r.epd);
+  if (a.debt > 0.004 && sw && so) {
+    const which = r.epd === c.cur.payday ? 'this paycheck' : `the ${fmtD(r.epd)} paycheck`;
+    h += `<div class="ba"><div><div class="lbl">Extra attack · ${which}</div><b>${money(so.available)}</b></div><div class="arrow">→</div><div><div class="lbl">Revised</div><b class="${sw.available < so.available - 0.004 ? 'late' : ''}">${money(sw.available)}</b></div></div>`;
+    const more = sw.carry - so.carry;
+    if (more > 0.004) h += `<div class="note">${money(more)} more carries into the following paycheck${more > extraBase() ? 's' : ''}.</div>`;
+  }
+  if (r.w.done && r.wo.done) {
+    h += `<div class="ba"><div><div class="lbl">Debt-free before</div><b>${fmtD(r.wo.date)}</b></div><div class="arrow">→</div><div><div class="lbl">After</div><b>${fmtD(r.w.date)}</b></div></div>`;
+    h += `<div class="impbig"><span class="label">Impact</span><div style="text-align:right"><b class="${r.days > 0 ? 'late' : ''}">${fmtDelta(r.days)}</b>${r.interest > 0.5 ? `<div class="hint">≈ ${money(r.interest)} more interest</div>` : ''}</div></div>`;
+  }
+  return h;
+}
+function saveExpense(id) {
+  const ex = id ? state.expenses.find(e => e.id === id) : null;
+  const d = readXForm(ex);
+  if (!d.desc) { toast('Add a short description.'); return; }
+  if (!(d.amount > 0)) { toast('Enter an amount greater than $0.'); return; }
+  const r = draftImpact({ ...d, status: 'planned' });
+  const impact = { days: r.days, interest: r.interest == null ? null : r2(r.interest) };
+  let e;
+  if (ex) {
+    e = ex; if (e.status === 'paid') revertPaid(e);
+    Object.assign(e, { desc: d.desc, amount: r2(d.amount), date: d.date, type: d.type, override: d.override, notes: d.notes, impact });
+    e.status = 'planned';
+    log(`Edited expense "${e.desc}" (${money(e.amount)}).`);
+  } else {
+    e = { id: uid(), desc: d.desc, amount: r2(d.amount), date: d.date, type: d.type, override: d.override, notes: d.notes, status: 'planned', debtCovered: 0, created: d.created, impact };
+    state.expenses.push(e);
+    log(`Added ${TYPE[e.type].toLowerCase()} expense "${e.desc}" — ${money(e.amount)} on ${fmtD(e.date)} (${fmtDelta(impact.days)}).`);
+  }
+  if (d.status === 'paid') applyPaid(e, d.deduct);
+  else if (d.status === 'cancelled') e.status = 'cancelled';
+  save(); closeModal(); render(); toast(ex ? 'Expense updated.' : 'Expense added.');
+}
+function openMarkPaid(id) {
+  const e = state.expenses.find(x => x.id === id); if (!e) return;
+  const a = model().allocs[id] || computeAllocations()[id];
+  const lines = ['flex', 'big', 'debt', 'ef'].filter(k => a[k] > 0.004).map(k => `<div class="arow"><i class="dot ${k}"></i><span>${SRC[k]}</span><b>${money(a[k])}</b></div>`).join('');
+  const deductible = a.flex + a.big + a.ef > 0.004;
+  openModal({ title: 'Mark paid', body: `<p style="margin:0 0 10px"><b>${esc(e.desc)}</b> · ${money(num(e.amount))} · ${fmtD(e.date)}</p>${lines}
+      ${a.debt > 0.004 ? `<div class="note">The ${money(a.debt - Math.min(num(e.debtCovered), a.debt))} debt-attack share comes out of your next “Paid this paycheck”.</div>` : ''}
+      ${deductible ? `<label class="chk mt16"><input type="checkbox" id="mpDeduct" checked> Subtract ${['flex', 'big', 'ef'].filter(k => a[k] > 0.004).map(k => `${money(a[k])} from ${SRC_SHORT[k] === 'Bucket' ? 'the bucket' : SRC_SHORT[k] === 'Flexible' ? 'Ally Spending' : 'Ally Savings'}`).join(' and ')}</label>` : ''}`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="confirm-paid" data-id="${id}">Mark paid</button>` });
+}
+
+/* ---------- Paid-this-paycheck preview ---------- */
+function openPayPreview() {
+  const c = ctx();
+  if (c.processed) { toast('This paycheck was already processed.'); return; }
+  const B = simulate({ detail: 1, c }), st = B.steps[0]; if (!st) return;
+  const S = S_(), lines = st.lines.filter(l => l.min + l.extra > 0.004).sort((a, b) => (b.extra - a.extra) || (b.apr - a.apr));
+  const total = lines.reduce((s, l) => s + l.min + l.extra, 0);
+  const fromFixed = lines.filter(l => l.minFrom === 'fixed').reduce((s, l) => s + l.min, 0);
+  const portions = pendingPortions(c); let rem = st.take; const absorbed = [];
+  for (const x of portions) { if (rem <= 0.004) break; const t = Math.min(rem, x.rem); absorbed.push([x.e.desc, t]); rem -= t; }
+  const paidOff = lines.filter(l => l.before > 0.005 && l.after <= 0.005);
+  const spill = lines.filter(l => l.extra > 0.004 && l.id !== st.targetId);
+  const tgtLine = lines.find(l => l.id === st.targetId);
+  const body = `<div class="payhead"><span class="label">Send to debts</span><b>${money(total)}</b></div>
+    <div class="kvs">
+      <div class="kv"><span>Normal extra attack</span><b>${money(st.extraBase)}</b></div>
+      ${absorbed.map(([dsc, t]) => `<div class="kv neg"><span>− ${esc(dsc)}</span><b>−${money(t)}</b></div>`).join('')}
+      ${st.rebuild > 0.004 ? `<div class="kv neg"><span>− Emergency-fund rebuild → Ally Savings</span><b>−${money(st.rebuild)}</b></div>` : ''}
+      <div class="kv tot"><span><b style="color:var(--ink)">Extra attack this paycheck</b></span><b>${money(st.available)}</b></div>
+      ${fromFixed > 0.004 ? `<div class="kv"><span>+ Minimums paid from fixed reserve</span><b>${money(fromFixed)}</b></div>` : ''}
+      ${st.carry > 0.004 ? `<div class="kv"><span>Still to absorb from later paychecks</span><b>${money(st.carry)}</b></div>` : ''}
+    </div>
+    ${paidOff.map(l => `<div class="cele">🎉 <b>${esc(l.name)}</b> hits $0 with this payment${spill.length ? ` — the rest spills to ${spill.map(s => esc(s.name)).join(', ')}` : ''}.</div>`).join('')}
+    <div class="eyebrow" style="margin:16px 0 4px">Payments</div>
+    ${lines.map(l => `<div class="payline"><div><b>${esc(l.name)}</b> ${l.id === st.targetId || (tgtLine == null && l.extra > 0) ? '<span class="pill ok">Target</span>' : l.extra > 0.004 ? '<span class="pill info">Spillover</span>' : ''}
+        <div class="s">${l.min > 0.004 ? `min ${money(l.min)}${l.minFrom === 'fixed' ? ' (fixed)' : ''}` : ''}${l.min > 0.004 && l.extra > 0.004 ? ' · ' : ''}${l.extra > 0.004 ? `extra ${money(l.extra)}` : ''}${l.interest > 0.005 ? ` · ~${money(l.interest)} interest since ${fmtDs(l.since)}` : ''}</div></div>
+      <div class="r"><b>${money(l.min + l.extra)}</b><div class="s">→ ${money(l.after)}</div></div></div>`).join('')}
+    ${num(S.bigPurchase) > 0 ? `<label class="chk mt16"><input type="checkbox" id="ppBucket" checked> Also add ${money(S.bigPurchase)} to the Big Purchase bucket</label>` : ''}
+    <p class="hint mt">Interest is a simple daily estimate since each balance was last updated. Your lender's numbers win — update them on the Debts tab anytime.</p>`;
+  openModal({ title: `Paid this paycheck · ${fmtDs(c.cur.payday)}`, wide: true, body,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary lg" data-act="pay-confirm">Confirm — I sent these payments</button>` });
+}
+
+/* ---------- Debts ---------- */
+function viewDebts() {
+  const M = model(), B = M.base, order = avalancheOrder(), tgtId = order[0] ? order[0].id : null, rank = {};
+  order.forEach((d, i) => rank[d.id] = i + 1);
+  const act = state.debts.filter(d => d.active).sort((a, b) => (rank[a.id] || 999) - (rank[b.id] || 999));
+  const inact = state.debts.filter(d => !d.active);
+  const live = act.filter(d => estBal(d) > 0.005);
+  const fixedMins = live.filter(d => d.minFrom === 'fixed').reduce((s, d) => s + num(d.min), 0);
+  const extraMins = live.filter(d => d.minFrom !== 'fixed').reduce((s, d) => s + num(d.min), 0);
+  return `<div class="ph"><div><h1>Debts</h1><div class="sub">Avalanche order — highest APR first. Update balances from lender apps whenever you like.</div></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="add-debt" data-kind="federal">${ICON.plus} Federal group</button><button class="btn primary" data-act="add-debt" data-kind="other">${ICON.plus} Debt</button></div></div>
+    <div class="grid g2e" style="margin-bottom:16px">
+      <section class="card"><div class="eyebrow">Total debt · estimated today</div><div class="xl">${money(totalDebt())}</div><div class="hint">${plural(live.length, 'active balance')}</div></section>
+      <section class="card"><div class="eyebrow">Monthly minimums</div><div class="xl">${money(fixedMins + extraMins)}</div><div class="hint">${money(fixedMins)} inside the fixed reserve · ${money(extraMins)} from the extra attack</div></section>
+    </div>
+    <div class="grid">${act.map(d => debtCard(d, rank[d.id], d.id === tgtId, B.payoffs[d.id])).join('') || '<div class="empty">No active debts.</div>'}</div>
+    ${inact.length ? `<div class="eyebrow" style="margin:24px 0 10px">Inactive</div><div class="grid">${inact.map(d => debtCard(d, null, false, null)).join('')}</div>` : ''}`;
+}
+function debtCard(d, rank, isT, po) {
+  const e = estBal(d), paid = d.active && e < 0.005;
+  return `<section class="card debt ${isT ? 'target' : ''} ${paid ? 'paid' : ''}">
+    <div class="dtop"><div><div class="dname">${esc(d.name)} ${isT ? '<span class="pill ok">Current target</span>' : ''}${paid ? '<span class="pill ok">Paid off</span>' : ''}${!d.active ? '<span class="pill">Inactive</span>' : ''}</div>
+      <div class="hint">${KIND[d.kind] || 'Debt'}${rank ? ` · #${rank} in the avalanche` : ''}</div></div>
+      <div class="r"><div class="lg">${money(e)}</div><div class="hint">est. today</div></div></div>
+    <div class="dgrid">
+      <div><span>APR</span><b>${d.apr == null || d.apr === '' ? '<em class="warnTxt">missing</em>' : fmtApr(d.apr).replace(' APR', '')}</b></div>
+      <div><span>Minimum</span><b>${money(num(d.min))}/mo</b><small>${d.minFrom === 'fixed' ? 'fixed reserve' : 'extra attack'} · ${d.due === '15' ? '15th' : 'end-of-month'} check</small></div>
+      <div><span>Verified balance</span><b>${isISO(d.verifiedDate) ? money(num(d.verifiedBal)) : '—'}</b><small>${isISO(d.verifiedDate) ? `${fmtD(d.verifiedDate)} · ${ago(d.verifiedDate)}` : 'not verified'}</small></div>
+      <div><span>Projected payoff</span><b>${paid ? fmtMY(d.paidOffDate) : po ? fmtMY(po) : '—'}</b>${isISO(d.anchorDate) && d.anchorDate !== d.verifiedDate ? `<small>model updated ${fmtDs(d.anchorDate)}</small>` : ''}</div>
+    </div>
+    <div class="dact"><button class="btn sm primary" data-act="edit-debt" data-id="${d.id}">Update balance</button>
+      <button class="btn sm ghost" data-act="toggle-active" data-id="${d.id}">${d.active ? 'Set inactive' : 'Reactivate'}</button></div>
+  </section>`;
+}
+function debtFormFields(d, isNew) {
+  const e = estBal(d);
+  return `<form id="dform" class="fgrid" onsubmit="return false" autocomplete="off">
+    <label class="f span2"><span>Name</span><input name="name" value="${esc(d.name)}" placeholder="e.g. Federal Group 2"></label>
+    <label class="f"><span>Current lender balance</span><input name="bal" inputmode="decimal" placeholder="${isNew ? '0.00' : `model est. ${money(e)}`}"><small>${isNew ? 'Required' : 'Leave blank to keep the model\'s estimate'}</small></label>
+    <label class="f"><span>Balance as of</span><input name="date" type="date" value="${todayISO()}"></label>
+    <label class="f"><span>APR %</span><input name="apr" inputmode="decimal" value="${d.apr == null ? '' : d.apr}" placeholder="e.g. 7.5"></label>
+    <label class="f"><span>Required minimum / month</span><input name="min" inputmode="decimal" value="${d.min == null ? '' : d.min}" placeholder="0.00"></label>
+    <label class="f"><span>Minimum paid from</span><select name="minFrom"><option value="fixed" ${d.minFrom === 'fixed' ? 'selected' : ''}>Fixed reserve</option><option value="extra" ${d.minFrom !== 'fixed' ? 'selected' : ''}>Extra attack</option></select></label>
+    <label class="f"><span>Paid with</span><select name="due"><option value="15" ${d.due === '15' ? 'selected' : ''}>15th paycheck</option><option value="eom" ${d.due === 'eom' ? 'selected' : ''}>End-of-month paycheck</option></select></label>
+    <label class="f"><span>Type</span><select name="kind">${Object.entries(KIND).map(([k, l]) => `<option value="${k}" ${d.kind === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label>
+    <label class="chk" style="align-self:end;min-height:44px"><input type="checkbox" name="active" ${d.active ? 'checked' : ''}> Active</label>
+  </form>
+  <p class="hint mt">Student-loan minimums usually live inside the ${money(S_().fixed)} fixed reserve; card minimums come out of the extra attack.${!isNew && isISO(d.verifiedDate) ? ` Last verified ${money(num(d.verifiedBal))} on ${fmtD(d.verifiedDate)}.` : ''}</p>`;
+}
+function openDebt(id, kind) {
+  const ex = id ? state.debts.find(d => d.id === id) : null;
+  const fedCount = state.debts.filter(d => d.kind === 'federal').length;
+  const d = ex || newDebt({ kind: kind === 'federal' ? 'federal' : 'other', name: kind === 'federal' ? `Federal Group ${fedCount + 1}` : '', minFrom: kind === 'federal' ? 'fixed' : 'extra' });
+  openModal({ title: ex ? `Update ${esc(ex.name)}` : 'Add debt', body: debtFormFields(d, !ex),
+    foot: `${ex ? `<button class="btn ghost danger lft" data-act="delete-debt" data-id="${ex.id}">Delete</button>` : ''}<button class="btn" data-act="close">Cancel</button><button class="btn primary" data-act="save-debt" data-id="${ex ? ex.id : ''}">Save</button>`,
+    onMount: s => { setTimeout(() => s.querySelector(ex ? '[name=bal]' : '[name=name]').focus(), 60); } });
+}
+function saveDebt(id) {
+  const fd = new FormData(document.getElementById('dform'));
+  const name = String(fd.get('name') || '').trim(), bal = numOrNull(fd.get('bal')), dt = isISO(fd.get('date')) ? fd.get('date') : todayISO();
+  if (!name) { toast('Give the debt a name.'); return; }
+  let d = id ? state.debts.find(x => x.id === id) : null; const isNew = !d;
+  if (isNew && bal == null) { toast('Enter the current balance.'); return; }
+  if (isNew) { d = newDebt({}); state.debts.push(d); }
+  const before = isNew ? null : estBal(d, dt);
+  Object.assign(d, { name, kind: fd.get('kind'), apr: numOrNull(fd.get('apr')), min: num(fd.get('min')), minFrom: fd.get('minFrom'), due: fd.get('due'), active: fd.get('active') === 'on' });
+  if (bal != null) {
+    d.anchorBal = r2(bal); d.anchorDate = dt; d.verifiedBal = r2(bal); d.verifiedDate = dt;
+    d.paidOffDate = bal <= 0.005 ? (d.paidOffDate || dt) : null;
+    log(isNew ? `Added debt ${name}: ${money(bal)} at ${fmtApr(d.apr)}.` :
+      `Verified ${name} at ${money(bal)} on ${fmtD(dt)} (model had ${money(before)}, ${bal - before >= 0 ? '+' : '−'}${money(Math.abs(bal - before))}).`);
+  } else log(`Updated ${name} details (${fmtApr(d.apr)}, ${money(d.min)}/mo minimum).`);
+  if (!state.startTotal && state.setupDone) state.startTotal = r2(totalDebt());
+  save(); closeModal(); render(); toast('Saved.');
+}
+
+/* ---------- Accounts & budget ---------- */
+function moneyField(label, name, val, hint) {
+  return `<label class="f"><span>${label}</span><input name="${name}" inputmode="decimal" value="${val == null ? '' : num(val).toFixed(2)}" placeholder="0.00">${hint ? `<small>${hint}</small>` : ''}</label>`;
+}
+function viewAccounts() {
+  const A = state.accounts, S = S_(), ex = extraBase();
+  const fixedMins = activeDebts().filter(d => d.minFrom === 'fixed' && estBal(d) > 0.005).reduce((s, d) => s + num(d.min), 0);
+  const gsum = S.flexGuide.reduce((s, g) => s + num(g.amt), 0);
+  return `<div class="ph"><div><h1>Accounts & budget</h1><div class="sub">Balances are snapshots you refresh; the budget is your steady state.</div></div></div>
+  <div class="grid g2e">
+    <section class="card"><h3>Cash accounts</h3>
+      <form id="accForm" class="fgrid" onsubmit="return false">
+        ${moneyField('Chase Checking', 'chase', A.chase, 'Bills, required loans, debt attack')}
+        ${moneyField('Ally Spending — total', 'allySpending', A.allySpending, 'Whole account, including the bucket')}
+        ${moneyField('Big Purchase bucket', 'bucket', A.bucket, 'The bucket inside Ally Spending')}
+        ${moneyField('Ally Savings', 'allySavings', A.allySavings, `Emergency fund · floor ${money(S.efFloor)}`)}
+        <label class="f span2"><span>Balances as of</span><input name="asOf" type="date" value="${isISO(A.asOf) ? A.asOf : todayISO()}"></label>
+      </form>
+      <div class="hint mt" id="accDerived">Flexible portion of Ally Spending: <b>${money(num(A.allySpending) - num(A.bucket))}</b></div>
+      <div class="actions"><button class="btn primary" data-act="save-accounts">Save balances</button></div>
+    </section>
+    <section class="card"><h3>Steady-state budget · per paycheck</h3>
+      <form id="budForm" class="fgrid" onsubmit="return false">
+        ${moneyField('Net paycheck', 'paycheck', S.paycheck)}
+        ${moneyField('Fixed / bills reserve', 'fixed', S.fixed, 'Includes loan minimums marked "fixed"')}
+        ${moneyField('Flexible spending', 'flexible', S.flexible)}
+        ${moneyField('Big Purchase savings', 'bigPurchase', S.bigPurchase)}
+      </form>
+      <div class="calc"><span>Extra debt attack</span><b id="exCalc">${money(ex)}</b></div>
+      <div class="hint mt8" id="exMonthly">${money(ex * 2)}/mo extra + ${money(fixedMins)}/mo of loan minimums inside fixed = <b>${money(ex * 2 + fixedMins)}/mo</b> debt capacity</div>
+      <div class="actions"><button class="btn primary" data-act="save-budget">Save budget</button></div>
+    </section>
+  </div>
+  <div class="grid g2e mt16">
+    <section class="card"><h3>Rules</h3>
+      <form id="ruleForm" class="fgrid" onsubmit="return false">
+        ${moneyField('Emergency-fund floor', 'efFloor', S.efFloor)}
+        <label class="f"><span>Debt-free goal</span><input name="goal" type="date" value="${S.goal}"></label>
+        <label class="f span2"><span>Max emergency rebuild per paycheck</span><input name="rebuildCap" inputmode="decimal" value="${S.rebuildCap == null ? '' : S.rebuildCap}" placeholder="Blank = the whole extra attack until rebuilt"></label>
+        <label class="chk span2"><input type="checkbox" name="rollMins" ${S.rollMins ? 'checked' : ''}> Roll a paid-off loan's fixed-reserve minimum into the attack</label>
+      </form>
+      <div class="actions"><button class="btn primary" data-act="save-rules">Save rules</button></div>
+    </section>
+    <section class="card"><h3>Flexible guide</h3>
+      <p class="hint" style="margin:-6px 0 12px">A reference, not a tracker. What matters is staying inside ${money(S.flexible)} per pay period.</p>
+      <form id="guideForm" onsubmit="return false">${S.flexGuide.map((g, i) => `<div class="grow"><input name="gl${i}" value="${esc(g.label)}" aria-label="Category"><input name="ga${i}" inputmode="decimal" value="${num(g.amt)}" aria-label="Amount"><button type="button" class="btn sm ghost" data-act="guide-del" data-i="${i}" aria-label="Remove">${ICON.x}</button></div>`).join('')}</form>
+      <div class="kv"><span>Buffer / subscriptions</span><b id="gBuf">${money(num(S.flexible) - gsum)}</b></div>
+      <div class="actions"><button class="btn sm" data-act="guide-add">${ICON.plus} Line</button><button class="btn primary" data-act="save-guide">Save guide</button></div>
+    </section>
+  </div>`;
+}
+function readGuide() {
+  const f = document.getElementById('guideForm'); if (!f) return S_().flexGuide;
+  const fd = new FormData(f), out = [];
+  for (let i = 0; fd.has('gl' + i); i++) out.push({ label: String(fd.get('gl' + i) || '').trim() || 'Other', amt: r2(num(fd.get('ga' + i))) });
+  return out;
+}
+
+/* ---------- History / backup ---------- */
+function viewHistory() {
+  const P = state.payments, X = state.expenses.filter(e => e.status !== 'planned').sort((a, b) => a.date > b.date ? -1 : 1);
+  const backupAge = state.lastExport ? diffDays(state.lastExport, todayISO()) : null;
+  return `<div class="ph"><div><h1>History & backup</h1><div class="sub">Everything is stored in this browser only.</div></div></div>
+  <section class="card">
+    <h3>Backup</h3>
+    <p class="hint" style="margin:-6px 0 14px">${state.lastExport ? `Last backup ${fmtD(state.lastExport)} (${ago(state.lastExport)}).` : 'No backup yet.'} Export a JSON file now and then — clearing browser data erases the app's memory.</p>
+    ${backupAge == null || backupAge > 30 ? `<div class="banner warn">${ICON.alert}<div>${backupAge == null ? 'You haven\'t exported a backup yet.' : 'Your last backup is over a month old.'}</div></div>` : ''}
+    <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn primary" data-act="export">Export JSON</button><button class="btn" data-act="import">Import JSON</button><button class="btn ghost danger" data-act="reset">Reset everything</button></div>
+  </section>
+  <section class="card mt16"><h3>Paycheck payments</h3>
+    ${P.length ? P.map((p, i) => `<details class="pay" ${i === 0 ? 'open' : ''}><summary><div><b>${fmtD(p.period)} paycheck</b><div class="hint">logged ${fmtD(p.date)}${p.paidOff && p.paidOff.length ? ` · 🎉 ${esc(p.paidOff.join(', '))} paid off` : ''}</div></div><div style="text-align:right"><b>${money(p.total)}</b><div class="hint">${money(p.available)} extra</div></div></summary>
+      <div class="in">${p.lines.map(l => `<div class="kv"><span>${esc(l.name)}${l.extra > 0 ? ` <span class="pill ok">+${money(l.extra)} extra</span>` : ''}</span><b>${money(l.min + l.extra)} → ${money(l.after)}</b></div>`).join('')}
+        ${p.take > 0 ? `<div class="kv neg"><span>Unusual expenses absorbed</span><b>−${money(p.take)}</b></div>` : ''}
+        ${p.rebuild > 0 ? `<div class="kv"><span>Emergency rebuild to Ally Savings</span><b>${money(p.rebuild)}</b></div>` : ''}
+        ${p.bucketAdded > 0 ? `<div class="kv"><span>Added to Big Purchase bucket</span><b>${money(p.bucketAdded)}</b></div>` : ''}
+        ${i === 0 && p.snap ? `<button class="btn sm ghost danger mt8" data-act="undo-payment">Undo this payment</button>` : ''}</div></details>`).join('') : '<div class="empty">No paychecks logged yet. Use “Paid this paycheck” on the dashboard.</div>'}
+  </section>
+  <section class="card mt16"><h3>Expense history</h3>
+    ${X.length ? X.map(e => `<div class="kv" style="border-top:1px solid var(--line);padding:10px 0"><span><b style="color:var(--ink)">${esc(e.desc)}</b><br><span class="hint">${fmtD(e.date)} · ${TYPE[e.type]} · ${e.status}</span></span><b>${money(num(e.amount))}${e.impact && e.impact.days ? `<br><span class="hint">${fmtDelta(e.impact.days)}</span>` : ''}</b></div>`).join('') : '<div class="empty">Paid and cancelled expenses show up here.</div>'}
+  </section>
+  <section class="card mt16"><h3>Activity</h3>
+    ${state.log.slice(0, 150).map(l => `<div class="loge"><time>${fmtD(l.d)}</time><span>${esc(l.msg)}</span></div>`).join('') || '<div class="empty">Nothing yet.</div>'}
+  </section>`;
+}
+function exportData() {
+  state.lastExport = todayISO(); save();
+  const data = JSON.stringify({ ...state, exportedAt: new Date().toISOString(), app: 'avalanche' }, null, 2);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([data], { type: 'application/json' }));
+  a.download = `avalanche-backup-${todayISO()}.json`;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  log('Exported a JSON backup.'); save(); render(); toast('Backup downloaded.');
+}
+function importData(file) {
+  const rd = new FileReader();
+  rd.onload = () => {
+    let obj; try { obj = JSON.parse(rd.result); } catch (e) { toast('That file isn\'t valid JSON.'); return; }
+    if (!obj || !obj.settings || !Array.isArray(obj.debts)) { toast('That doesn\'t look like an Avalanche backup.'); return; }
+    openModal({ title: 'Import backup?', body: `<p>Replace everything in this browser with the backup${obj.exportedAt ? ` from <b>${fmtD(obj.exportedAt.slice(0, 10))}</b>` : ''}? It holds ${plural(obj.debts.length, 'debt')}, ${plural((obj.expenses || []).length, 'expense')} and ${plural((obj.payments || []).length, 'payment')}.</p>`,
+      foot: `<button class="btn" data-act="close">Cancel</button><button class="btn primary" id="doImport">Replace with backup</button>`,
+      onMount: s => { s.querySelector('#doImport').onclick = () => { delete obj.exportedAt; delete obj.app; state = migrate(obj); log('Imported a JSON backup.'); save(); closeModal(); render(); toast('Backup imported.'); }; } });
+  };
+  rd.readAsText(file);
+}
+
+/* ---------- First-run setup ---------- */
+function viewSetup() {
+  const A = state.accounts, S = S_();
+  return `<div class="setup">
+    <div class="brand"><span class="mark">${ICON.logo}</span>Avalanche</div>
+    <h1>Let's anchor to reality.</h1>
+    <p class="lead">Pull current numbers from your bank and lender apps. Everything stays in this browser. Uncheck <b>Active</b> on anything you don't have handy — you can fill it in later.</p>
+    <section class="card"><h3>Cash accounts</h3><form id="sAcc" class="fgrid" onsubmit="return false">
+      ${moneyField('Chase Checking', 'chase', A.chase)}
+      ${moneyField('Ally Spending — total', 'allySpending', A.allySpending, 'Including the bucket')}
+      ${moneyField('Big Purchase bucket', 'bucket', A.bucket)}
+      ${moneyField('Ally Savings (emergency)', 'allySavings', A.allySavings, `Floor ${money(S.efFloor)}`)}
+    </form></section>
+    <section class="card"><h3>Debts</h3>
+      <p class="hint" style="margin:-6px 0 14px">Balance and APR are required for active debts. Student-loan minimums are paid from the fixed reserve; card minimums come out of the extra attack.</p>
+      <div id="sDebts">${state.debts.map(setupRow).join('')}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" data-act="setup-add" data-kind="federal">${ICON.plus} Federal loan group</button><button class="btn" data-act="setup-add" data-kind="other">${ICON.plus} Other debt</button></div>
+    </section>
+    <section class="card"><h3>Steady-state budget</h3>
+      <div class="kv"><span>Net paycheck (15th & last day)</span><b>${money(S.paycheck)}</b></div>
+      <div class="kv"><span>Fixed reserve · Flexible · Big Purchase</span><b>${money(S.fixed)} · ${money(S.flexible)} · ${money(S.bigPurchase)}</b></div>
+      <div class="kv tot"><span>Extra debt attack per paycheck</span><b style="color:var(--accent)">${money(extraBase())}</b></div>
+      <p class="hint">Editable later on the Accounts tab.</p>
+    </section>
+    <button class="btn primary lg" style="width:100%" data-act="setup-finish">Finish setup</button>
+  </div>`;
+}
+function setupRow(d) {
+  const ph = d.ph || {};
+  return `<div class="drow ${d.active ? '' : 'off'}" data-id="${d.id}">
+    <div class="dgr">
+      <label class="f nm"><span>Name</span><input data-k="name" value="${esc(d.name)}"></label>
+      <label class="f"><span>Balance</span><input data-k="bal" inputmode="decimal" value="${d.anchorBal == null ? '' : d.anchorBal}" placeholder="${esc(ph.bal || '0.00')}"></label>
+      <label class="f"><span>APR %</span><input data-k="apr" inputmode="decimal" value="${d.apr == null ? '' : d.apr}" placeholder="${esc(ph.apr || '')}"></label>
+      <label class="f"><span>Min / month</span><input data-k="min" inputmode="decimal" value="${d.min == null ? '' : d.min}" placeholder="${esc(ph.min || '0.00')}"></label>
+    </div>
+    <div class="dgr2">
+      <label class="f"><span>Verified on</span><input data-k="date" type="date" value="${isISO(d.anchorDate) ? d.anchorDate : todayISO()}"></label>
+      <label class="f"><span>Minimum from</span><select data-k="minFrom"><option value="fixed" ${d.minFrom === 'fixed' ? 'selected' : ''}>Fixed reserve</option><option value="extra" ${d.minFrom !== 'fixed' ? 'selected' : ''}>Extra attack</option></select></label>
+      <label class="f"><span>Paid with</span><select data-k="due"><option value="15" ${d.due === '15' ? 'selected' : ''}>15th check</option><option value="eom" ${d.due === 'eom' ? 'selected' : ''}>End-of-month</option></select></label>
+      <div style="display:flex;gap:10px;align-items:center;min-height:44px"><label class="chk"><input type="checkbox" data-k="active" ${d.active ? 'checked' : ''}> Active</label><button class="btn sm ghost" data-act="setup-remove" data-id="${d.id}" aria-label="Remove">${ICON.x}</button></div>
+    </div></div>`;
+}
+function harvestSetup() {
+  const fa = document.getElementById('sAcc');
+  if (fa) { const fd = new FormData(fa); for (const k of ['chase', 'allySpending', 'bucket', 'allySavings']) state.accounts[k] = numOrNull(fd.get(k)); }
+  document.querySelectorAll('.drow').forEach(row => {
+    const d = state.debts.find(x => x.id === row.dataset.id); if (!d) return;
+    const g = k => row.querySelector(`[data-k="${k}"]`);
+    d.name = g('name').value.trim(); d.anchorBal = numOrNull(g('bal').value); d.apr = numOrNull(g('apr').value); d.min = numOrNull(g('min').value);
+    d.anchorDate = isISO(g('date').value) ? g('date').value : todayISO(); d.minFrom = g('minFrom').value; d.due = g('due').value; d.active = g('active').checked;
+  });
+}
+function finishSetup() {
+  harvestSetup(); let bad = 0;
+  document.querySelectorAll('.drow').forEach(row => {
+    const d = state.debts.find(x => x.id === row.dataset.id);
+    row.querySelectorAll('.f').forEach(f => f.classList.remove('err'));
+    if (!d || !d.active) return;
+    if (d.anchorBal == null) { row.querySelector('[data-k=bal]').closest('.f').classList.add('err'); bad++; }
+    if (d.apr == null) { row.querySelector('[data-k=apr]').closest('.f').classList.add('err'); bad++; }
+    if (!d.name) { row.querySelector('[data-k=name]').closest('.f').classList.add('err'); bad++; }
+  });
+  if (bad) { toast('Fill balance and APR for active debts, or uncheck Active.'); document.querySelector('.f.err input')?.focus(); return; }
+  state.debts = state.debts.filter(d => d.name || d.anchorBal != null);
+  for (const d of state.debts) {
+    if (d.min == null) d.min = 0;
+    if (d.anchorBal != null) { d.verifiedBal = d.anchorBal; d.verifiedDate = d.anchorDate; if (d.anchorBal <= 0.005) d.paidOffDate = d.anchorDate; }
+    else d.active = false;
+    delete d.ph;
+  }
+  for (const k of ['chase', 'allySpending', 'bucket', 'allySavings']) if (state.accounts[k] == null) state.accounts[k] = 0;
+  state.accounts.asOf = todayISO(); state.setupDone = true; state.startTotal = r2(totalDebt());
+  log(`Setup complete: ${money(state.startTotal)} total debt across ${plural(activeDebts().filter(d => estBal(d) > 0).length, 'active balance')}.`);
+  save(); location.hash = 'dashboard'; render(); toast('You\'re set. Here\'s the plan.');
+}
+
+/* ============================================================
+   Wiring
+   ============================================================ */
+const VIEWS = { dashboard: viewDashboard, expenses: viewExpenses, debts: viewDebts, accounts: viewAccounts, history: viewHistory };
+function render() {
+  MODEL = null;
+  const app = document.getElementById('app');
+  if (!state.setupDone) { app.innerHTML = viewSetup(); return; }
+  app.innerHTML = shell(VIEWS[view()]());
+}
+const ACT = {
+  close: () => closeModal(),
+  nav: el => { if (location.hash.slice(1) === el.dataset.v) render(); else location.hash = el.dataset.v; window.scrollTo(0, 0); },
+  'add-expense': () => openExpense(null),
+  'edit-expense': el => { closeModal(); openExpense(el.dataset.id); },
+  'save-expense': el => saveExpense(el.dataset.id || null),
+  'pay-expense': el => openMarkPaid(el.dataset.id),
+  'confirm-paid': el => {
+    const e = state.expenses.find(x => x.id === el.dataset.id); if (!e) return;
+    const cb = document.getElementById('mpDeduct');
+    applyPaid(e, cb ? cb.checked : false); log(`Marked "${e.desc}" paid (${money(num(e.amount))}).`);
+    save(); closeModal(); render(); toast('Marked paid.');
+  },
+  'cancel-expense': el => {
+    const e = state.expenses.find(x => x.id === el.dataset.id); if (!e) return;
+    if (e.status === 'paid') revertPaid(e);
+    e.status = 'cancelled'; log(`Cancelled "${e.desc}".`); save(); render(); toast('Cancelled — the plan no longer counts it.');
+  },
+  'restore-expense': el => { const e = state.expenses.find(x => x.id === el.dataset.id); if (!e) return; e.status = 'planned'; log(`Restored "${e.desc}" to planned.`); save(); render(); },
+  'delete-expense': el => {
+    const e = state.expenses.find(x => x.id === el.dataset.id); if (!e) return;
+    openModal({ title: 'Delete expense?', body: `<p>Delete <b>${esc(e.desc)}</b> (${money(num(e.amount))}) permanently?${e.deducted ? ' Its account deductions will be reversed.' : ''}</p>`,
+      foot: `<button class="btn" data-act="close">Keep it</button><button class="btn dangerfill" data-act="delete-expense-yes" data-id="${e.id}">Delete</button>` });
+  },
+  'delete-expense-yes': el => {
+    const e = state.expenses.find(x => x.id === el.dataset.id); if (!e) return;
+    if (e.status === 'paid') revertPaid(e);
+    state.expenses = state.expenses.filter(x => x.id !== e.id); log(`Deleted expense "${e.desc}".`); save(); closeModal(); render(); toast('Deleted.');
+  },
+  'exp-filter': el => { expFilter = el.dataset.v; render(); },
+  'pay-preview': () => openPayPreview(),
+  'pay-confirm': () => { const cb = document.getElementById('ppBucket'); processPaycheck(cb ? cb.checked : false); },
+  'undo-payment': () => {
+    const p = state.payments[0]; if (!p) return;
+    openModal({ title: 'Undo payment?', body: `<p>Undo the <b>${fmtD(p.period)}</b> paycheck (${money(p.total)})? Debt balances, account balances and expense absorption go back to exactly how they were before it — including any balance updates you made since.</p>`,
+      foot: `<button class="btn" data-act="close">Keep it</button><button class="btn dangerfill" data-act="undo-yes">Undo payment</button>` });
+  },
+  'undo-yes': () => undoPayment(),
+  'edit-debt': el => openDebt(el.dataset.id),
+  'add-debt': el => openDebt(null, el.dataset.kind),
+  'save-debt': el => saveDebt(el.dataset.id || null),
+  'delete-debt': el => {
+    const d = state.debts.find(x => x.id === el.dataset.id); if (!d) return;
+    openModal({ title: 'Delete debt?', body: `<p>Remove <b>${esc(d.name)}</b> entirely? To keep its history in the projection but stop tracking it, set it inactive instead.</p>`,
+      foot: `<button class="btn" data-act="close">Cancel</button><button class="btn dangerfill" data-act="delete-debt-yes" data-id="${d.id}">Delete</button>` });
+  },
+  'delete-debt-yes': el => { const d = state.debts.find(x => x.id === el.dataset.id); state.debts = state.debts.filter(x => x.id !== el.dataset.id); log(`Deleted debt ${d ? d.name : ''}.`); save(); closeModal(); render(); toast('Debt removed.'); },
+  'toggle-active': el => { const d = state.debts.find(x => x.id === el.dataset.id); if (!d) return; d.active = !d.active; log(`${d.name} set ${d.active ? 'active' : 'inactive'}.`); save(); render(); },
+  'save-accounts': () => {
+    const fd = new FormData(document.getElementById('accForm')), A = state.accounts, old = { ...A };
+    for (const k of ['chase', 'allySpending', 'bucket', 'allySavings']) A[k] = r2(num(fd.get(k)));
+    A.asOf = isISO(fd.get('asOf')) ? fd.get('asOf') : todayISO();
+    if (A.bucket > A.allySpending + 0.005) toast('Heads up: the bucket is larger than the Ally Spending total.');
+    const ch = ['chase', 'allySpending', 'bucket', 'allySavings'].filter(k => Math.abs(num(old[k]) - A[k]) > 0.004);
+    log(`Updated account balances${ch.length ? ': ' + ch.map(k => `${{ chase: 'Chase', allySpending: 'Ally Spending', bucket: 'Bucket', allySavings: 'Ally Savings' }[k]} ${money(A[k])}`).join(', ') : ''}.`);
+    save(); render(); toast('Balances saved.');
+  },
+  'save-budget': () => {
+    const fd = new FormData(document.getElementById('budForm')), S = S_();
+    for (const k of ['paycheck', 'fixed', 'flexible', 'bigPurchase']) S[k] = r2(num(fd.get(k)));
+    if (extraBase() < 0) toast('Warning: those allocations exceed the paycheck.');
+    log(`Budget updated: ${money(S.paycheck)} paycheck → ${money(S.fixed)} fixed, ${money(S.flexible)} flexible, ${money(S.bigPurchase)} big purchase, ${money(extraBase())} extra attack.`);
+    save(); render(); toast('Budget saved.');
+  },
+  'save-rules': () => {
+    const fd = new FormData(document.getElementById('ruleForm')), S = S_();
+    S.efFloor = r2(num(fd.get('efFloor'))); if (isISO(fd.get('goal'))) S.goal = fd.get('goal');
+    S.rebuildCap = numOrNull(fd.get('rebuildCap')); S.rollMins = fd.get('rollMins') === 'on';
+    log(`Rules updated: floor ${money(S.efFloor)}, goal ${fmtD(S.goal)}.`); save(); render(); toast('Rules saved.');
+  },
+  'guide-add': () => { S_().flexGuide = readGuide(); S_().flexGuide.push({ label: 'New line', amt: 0 }); render(); },
+  'guide-del': el => { const g = readGuide(); g.splice(+el.dataset.i, 1); S_().flexGuide = g; render(); },
+  'save-guide': () => { S_().flexGuide = readGuide(); save(); render(); toast('Guide saved.'); },
+  export: () => exportData(),
+  import: () => { const f = document.getElementById('importFile'); f.value = ''; f.click(); },
+  reset: () => openModal({ title: 'Reset everything?', body: `<p>This erases all debts, expenses, payments and settings in this browser. Export a backup first if you might want it back.</p><label class="f"><span>Type RESET to confirm</span><input id="resetTxt" autocomplete="off"></label>`,
+    foot: `<button class="btn" data-act="close">Cancel</button><button class="btn dangerfill" data-act="reset-yes">Erase all data</button>` }),
+  'reset-yes': () => {
+    if ((document.getElementById('resetTxt').value || '').trim().toUpperCase() !== 'RESET') { toast('Type RESET to confirm.'); return; }
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    state = defaultState(); save(); closeModal(); location.hash = ''; render(); toast('All data erased.');
+  },
+  'setup-add': el => { harvestSetup(); const k = el.dataset.kind, n = state.debts.filter(d => d.kind === 'federal').length;
+    state.debts.push(newDebt(k === 'federal' ? { name: `Federal Group ${n + 1}`, kind: 'federal', minFrom: 'fixed' } : { name: '', kind: 'other', minFrom: 'extra' })); save(); render(); },
+  'setup-remove': el => { harvestSetup(); state.debts = state.debts.filter(d => d.id !== el.dataset.id); save(); render(); },
+  'setup-finish': () => finishSetup()
+};
+function onClick(e) {
+  if (e.target.matches && e.target.matches('[data-scrim]')) { closeModal(); return; }
+  const el = e.target.closest('[data-act]'); if (!el) return;
+  const fn = ACT[el.dataset.act]; if (fn) { e.preventDefault(); fn(el, e); }
+}
+function onInput(e) {
+  const t = e.target;
+  if (t.closest('#budForm')) {
+    const fd = new FormData(document.getElementById('budForm'));
+    const ex = num(fd.get('paycheck')) - num(fd.get('fixed')) - num(fd.get('flexible')) - num(fd.get('bigPurchase'));
+    document.getElementById('exCalc').textContent = money(ex);
+  } else if (t.closest('#accForm')) {
+    const fd = new FormData(document.getElementById('accForm'));
+    document.getElementById('accDerived').innerHTML = `Flexible portion of Ally Spending: <b>${money(num(fd.get('allySpending')) - num(fd.get('bucket')))}</b>`;
+  } else if (t.closest('#guideForm')) {
+    document.getElementById('gBuf').textContent = money(num(S_().flexible) - readGuide().reduce((s, g) => s + g.amt, 0));
+  } else if (t.closest('.drow') && t.dataset.k === 'active') {
+    t.closest('.drow').classList.toggle('off', !t.checked);
+  }
+}
+function boot() {
+  load(); render();
+  window.addEventListener('hashchange', () => { closeModal(); render(); });
+  document.addEventListener('click', onClick);
+  document.addEventListener('input', onInput);
+  document.addEventListener('change', onInput);
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+  document.getElementById('importFile').addEventListener('change', e => { const f = e.target.files[0]; if (f) importData(f); });
+  let seen = todayISO();
+  const tick = () => { if (todayISO() !== seen) { seen = todayISO(); if (!document.querySelector('.scrim')) render(); } };
+  setInterval(tick, 60000); document.addEventListener('visibilitychange', tick);
+}
+if (typeof document !== 'undefined' && document.getElementById('app')) boot();
+</script>
+</body>
+</html>
